@@ -1,0 +1,12 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\Character",
+    "\\Character\\Jobs",
+    "\\Character\\Jobs\\Rogue",
+    "\\Character\\Jobs\\Rogue\\Skills",
+    "\\CombatSystem"
+  ],
+  "SelectedNode": "\\Program.cs",
+  "PreviewInSolutionExplorer": false
+}

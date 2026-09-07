@@ -18,21 +18,17 @@ public class DoubleSlash : Ability
     {
         if (User.Mana >= ManaCost)
         {
-            User.Mana -= 10;
+            User.Mana -= ManaCost;                
             int hit1 = User.NormalAttack(25);
-            Target.DamageTaken(hit1);
-            Console.WriteLine($"Double Slash hits {Target.Name} for {hit1} Damage.");
+            int actualdamage1 = Target.DamageTaken(hit1);
+            Console.WriteLine($"Double Slash hits {Target.Name} for {actualdamage1} Damage.");
             System.Threading.Thread.Sleep(1000);
             if (!Target.IsDead)
             {
                 int hit2 = User.NormalAttack(25);
-                Target.DamageTaken(hit2);
-                Console.WriteLine($"Double Slash hits {Target.Name} for {hit2} Damage.");
+                int actualdamage2 = Target.DamageTaken(hit2);
+                Console.WriteLine($"Double Slash hits {Target.Name} for {actualdamage2} Damage.");
                 System.Threading.Thread.Sleep(1000);
-            }
-            else if (Target.IsDead)
-            {
-                return;
             }
         }
         else

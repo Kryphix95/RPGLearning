@@ -76,7 +76,7 @@ public class Character
     {
         if (IsDodged)
         {
-            return Health; // If the character dodged the attack, then no damage is taken
+            return 0; // If the character dodged the attack, then no damage is taken
         }
 
         if (IsBlocked)
@@ -84,12 +84,15 @@ public class Character
             incomingDamage = incomingDamage / 2; // If the character blocked the attack, then damage is reduced by 50%
         }
         double damageAfterReduction = incomingDamage * (1 - (DamageReduction / 100)); // Apply damage reduction based on defense and armor
-        Health = Health - (int)Math.Round(damageAfterReduction);
+        int actualdamage = (int)Math.Round(damageAfterReduction);
+
+        Health = Health - actualdamage;
+
         if (Health < 0)
         {
             Health = 0;
         }
-        return Health;
+        return actualdamage;
     }
     protected void ResetResources() // Reset Health and Mana to Max values, can be called when the character levels up or when the character rests
     {

@@ -19,10 +19,11 @@ public class CombatSystem // Combat System class, handles the combat between the
         switch (input)
         {
             case "1":
-                int damage = player.NormalAttack(player.PhysicalDamage);
-                enemy.DamageTaken(damage);
-                Console.WriteLine(player.Name + " attacked " + enemy.Name + " for " + damage + " damage!");
+                int damage = player.NormalAttack();
+                int actualdamage = enemy.DamageTaken(damage);
+                Console.WriteLine(player.Name + " attacked " + enemy.Name + " for " + actualdamage + " damage!");
                 break;
+
 
             case "2":
                 // Ability logic goes here
@@ -89,9 +90,9 @@ public class CombatSystem // Combat System class, handles the combat between the
                 }
                 else if (participant == Enemy) // If the participant is the enemy, then call the EnemyTurn method and pass in the enemy and the player as parameters
                 {
-                    int damage = Enemy.NormalAttack(Enemy.PhysicalDamage);
-                    Player.DamageTaken(damage);
-                    Console.WriteLine(Enemy.Name + " attacked " + Player.Name + " for " + damage + " damage!");
+                    int damage = Enemy.NormalAttack();
+                    int actualdamage = Player.DamageTaken(damage);
+                    Console.WriteLine(Enemy.Name + " attacked " + Player.Name + " for " + actualdamage + " damage!");
                     System.Threading.Thread.Sleep(1000); // Pause for 1 second
                     Console.Clear();
                 }
