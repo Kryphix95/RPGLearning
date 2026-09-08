@@ -19,6 +19,6 @@ namespace GameAscendNamespace;
         public int Cooldown { get; set; } = 0;
         public int ManaCost { get; set; } = 0;
         public string Description { get; set; } = string.Empty;
-        public virtual void Execute(Character User, Enemy Target)
+        public virtual void Execute(Character User, Character Target)
         { }
     }

@@ -5,9 +5,28 @@ using System.Security.Cryptography;
 
 namespace GameAscendNamespace;
 
+
+
 public class CombatSystem // Combat System class, handles the combat between the player and the enemy
 {
-    static void PlayerTurn(Character player, Enemy enemy) // Player Turn method, handles the player's turn in combat
+    static Character ChooseTarget(List<Character> targets) // Choose Target method, handles the target selection for the player
+    {
+        Console.WriteLine("Choose your Target:");
+        for (int i = 0; i < targets.Count; i++)
+        {
+            Console.WriteLine($"{i + 1}. {targets[i].Name} - HP: {targets[i].Health}/{targets[i].MaxHealth}");
+        }
+        string targetInput = Console.ReadLine();
+        int targetNumber = int.Parse(targetInput);
+        int targetIndex = targetNumber - 1;
+        return targets[targetIndex];
+    }
+    static Character ChooseRandomTarget(List<Character> targets) // Choose Random Target method, handles the target selection for the enemy
+    {
+        int targetIndex = RandomNumberGenerator.GetInt32(0, targets.Count);
+        return targets[targetIndex];
+    }
+    static void PlayerTurn(Character player, List<Character> participants) // Player Turn method, handles the player's turn in combat
     {
         Console.WriteLine("It's " + player.Name + "'s turn!");
         Console.WriteLine("What would you like to do?");
@@ -19,24 +38,53 @@ public class CombatSystem // Combat System class, handles the combat between the
         switch (input)
         {
             case "1":
-                int damage = player.NormalAttack();
-                int actualdamage = enemy.DamageTaken(damage);
-                Console.WriteLine(player.Name + " attacked " + enemy.Name + " for " + actualdamage + " damage!");
+                List<Character> attackTargets = participants.Where(t => !t.IsDead).ToList(); // Get a list of valid targets (not dead)
+
+                Character target = ChooseTarget(attackTargets); // Choose a target from the list of valid targets
+
+                DamageResult result = player.NormalAttack();
+                result = target.DamageTaken(result);
+
+                if (result.IsCrit)
+                {
+                    Console.WriteLine("Critical Hit!");
+                }
+
+                if (result.IsDodged)
+                {
+                    Console.WriteLine(target.Name + " dodged the attack!");
+                }
+
+                if (result.IsBlocked)
+                {
+                    Console.WriteLine(target.Name + " blocked the attack!");
+                }
+
+
+                Console.WriteLine(player.Name + " attacked " + target.Name + " for " + result.FinalDamage + " damage!");
                 break;
 
 
             case "2":
-                // Ability logic goes here
-                for (int i = 0; i < player.Abilities.Count; i++) // Sorts Abilities of the Charakter
+
+                for (int i = 0; i < player.Abilities.Count; i++)
                 {
-                    Console.WriteLine($"{i + 1}. {player.Abilities[i].Name} - Mana: {player.Abilities[i].ManaCost}"); // Shows Charakter Abilities wich are available
+                    Console.WriteLine(
+                        $"{i + 1}. {player.Abilities[i].Name} - Mana: {player.Abilities[i].ManaCost}"
+                    );
                 }
-                    string input2 = Console.ReadLine();
-                    switch (input2) // input to choose between Abilities
-                    {
-                        case "1": player.Abilities[0].Execute(player, enemy); // Ability 1
-                        break;
-                    }
+
+                string abilityInput = Console.ReadLine();
+                int abilityIndex = int.Parse(abilityInput) - 1;
+
+                Ability selectedAbility = player.Abilities[abilityIndex];
+
+                List<Character> abilityTargets  = participants.Where(t => !t.IsDead).ToList();
+
+                Character abilityTarget = ChooseTarget(abilityTargets);
+
+                selectedAbility.Execute(player, abilityTarget);
+
                 break;
 
             case "3":
@@ -48,73 +96,77 @@ public class CombatSystem // Combat System class, handles the combat between the
                 break;
         }
     }
+    static void EnemyTurn(Enemy enemy, Character target) // Enemy Turn method, handles the enemy's turn in combat
+    {
+        DamageResult result = enemy.NormalAttack();
+        result = target.DamageTaken(result);
+
+        Console.WriteLine(enemy.Name + " attacked " + target.Name + " for " + result.FinalDamage + " damage!");
+    }
 
     private List<Character> Participants = new List<Character>();
-    private Character Player;
-    private Enemy Enemy;
-    private void SortParticipantsBySpeed() // Sorts the participants by their dexterity, so that the participant with the highest dexterity goes first
+    private List<Character> Players;
+    private List<Enemy> Enemies;
+
+    public CombatSystem(List<Character> players, List <Enemy> enemies) // Constructor for the CombatSystem class, takes a player and a list of enemies as parameters
     {
-        Participants = Participants.OrderByDescending(p => p.Dexterity).ToList();
-    }
-    public CombatSystem(Character player, Enemy enemy) // Constructor for the CombatSystem class, takes in a player and an enemy as parameters
-    {
-        Player = player;
-        Enemy = enemy;
-        Participants.Add(player);
-        Participants.Add(enemy);
+        Players = players;
+        Enemies = enemies;
+        Participants.AddRange(players);
+        Participants.AddRange(enemies);
     }
     public void StartCombat() // Starts the combat between the player and the enemy, and handles the combat logic
     {
-        while (!Player.IsDead && !Enemy.IsDead)
+        while (Players.Any(p => !p.IsDead) && Enemies.Any(e => !e.IsDead))
         {
+            // Snapshot of the participants at the start of the round
+            List<Character> roundParticipants = Participants.Where(p => !p.IsDead).ToList();
 
-            Console.WriteLine("Player Name: " + Player.Name + " | Player Level: " + Player.Level);
-            Console.WriteLine("Player Health: " + Player.Health + "/" + Player.MaxHealth + " | Mana: " + Player.Mana + "/" + Player.MaxMana);
-            Console.WriteLine();
-            Console.WriteLine("Enemy Name: " + Enemy.Name + " | Enemy Level: " + Enemy.Level);
-            Console.WriteLine("Enemy Health: " + Enemy.Health + "/" + Enemy.MaxHealth);
-            Console.WriteLine();
+            // List to keep track of participants who have already acted in this round
+            List<Character> actedParticipants = new List<Character>();
 
-            SortParticipantsBySpeed();
-
-            foreach (Character participant in Participants) // Loop through the participants and handle their turns
+            while (true)
             {
-                if (participant.IsDead) // If the participant is dead, then skip their turn and continue to the next participant
+                Character? participant = roundParticipants.Where(p => !p.IsDead && !actedParticipants.Contains(p)).OrderByDescending(p => p.Dexterity).FirstOrDefault(); // Get the next participant who has not acted yet and is not dead, ordered by dexterity
+
+
+                // If there are no more participants who have not acted yet, then break out of the loop and start a new round
+                if (participant == null)
                 {
-                    continue;
+                    break; // All participants have acted, break out of the loop
                 }
 
-                if (participant == Player) //   If the participant is the player, then call the PlayerTurn method and pass in the player and the enemy as parameters
+                // If either the player or the enemy is dead, then break out of the loop and end the combat
+                if (!Players.Any(p => !p.IsDead) || !Enemies.Any(e => !e.IsDead))
                 {
-                    PlayerTurn(Player, Enemy);
-                }
-                else if (participant == Enemy) // If the participant is the enemy, then call the EnemyTurn method and pass in the enemy and the player as parameters
-                {
-                    int damage = Enemy.NormalAttack();
-                    int actualdamage = Player.DamageTaken(damage);
-                    Console.WriteLine(Enemy.Name + " attacked " + Player.Name + " for " + actualdamage + " damage!");
-                    System.Threading.Thread.Sleep(1000); // Pause for 1 second
-                    Console.Clear();
+                    break;
                 }
 
-                if (Enemy.IsDead || Player.IsDead) // If either the player or the enemy is dead, then break out of the loop and end the combat
+                actedParticipants.Add(participant); // Add the participant to the list of participants who have acted
+
+                if (Players.Contains(participant))
                 {
-                    if (Enemy.IsDead)
-                    {
-                        Console.WriteLine("" + Player.Name + " has defeated " + Enemy.Name + " and gained " + Enemy.ExperienceReward + " experience!");
-                        Player.GainExperience(Enemy.ExperienceReward);
-                        break; // Break out of the loop if either the player or the enemy is dead
-                    }
-                    if (Player.IsDead)
-                    {
-                        Console.WriteLine("" + Player.Name + " has been defeated by " + Enemy.Name + "!");
-                        Console.WriteLine("Game Over!");
-                        Console.WriteLine("You return to the Village to rest and recover, but you have lost some of your experience and gold.");
-                        break; // Break out of the loop if either the player or the enemy is dead
-                    }
+                    PlayerTurn(participant, Participants);
+                }
+                else if (participant is Enemy enemy)
+                {
+                    List<Character> validTargets = Players.Where(p => !p.IsDead).ToList(); // Get a list of valid targets (not dead)
+                    Character target = ChooseRandomTarget(validTargets);
+                    EnemyTurn(enemy, target);
+
                 }
             }
         }
+
+    if (Enemies.All(e => e.IsDead))
+        {
+            Console.WriteLine("Victory! All enemies have been defeated!");
+        }
+        else if (Players.All(p => p.IsDead))
+        {
+            Console.WriteLine("Defeat! All players have been defeated!");
+        }
+
         // Combat logic goes here
     }
 }

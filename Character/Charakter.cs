@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
-using static GameAscendNamespace.Program;
 
 namespace GameAscendNamespace;
 
@@ -59,40 +58,58 @@ public class Character
     { 
         return RandomNumberGenerator.GetInt32(0, 100) < CritChance + BonusCritChance;
     }// Check if the Character got a Crit or not 
-    public int NormalAttack(double BonusCritChance = 0) // Calculate the Damage for a Normal Attack, if the character got a Crit, then the damage is multiplied by the CritMultiplier
+    
+    
+    public DamageResult NormalAttack(double BonusCritChance = 0) // Normal Attack method, calculates the damage for a normal attack, takes into account the character's strength, weapon damage, and crit chance
     {
-        int DealDamage;
-        if (IsCrit(BonusCritChance))
+        bool isCrit = IsCrit(BonusCritChance);
+        int rawDamage;
+
+        if (isCrit)
         {
-            DealDamage = (int)Math.Round(PhysicalDamage * CritMultiplier); // If the character got a Crit, then the damage is multiplied by the CritMultiplier
-            return DealDamage;
+            rawDamage = (int)Math.Round(PhysicalDamage * CritMultiplier); // If the character got a Crit, then the damage is multiplied by the CritMultiplier
+
         }
-        DealDamage = PhysicalDamage; // If the character didn't get a Crit, then the damage is equal to the PhysicalDamage
-
-        return DealDamage;
-
-    } // Calculate the Damage for a Normal Attack
-    public int DamageTaken(int incomingDamage) // Calculate damage taken after applying defense and damage reduction
-    {
-        if (IsDodged)
+        else
         {
-            return 0; // If the character dodged the attack, then no damage is taken
+            rawDamage = PhysicalDamage; // If the character didn't get a Crit, then the damage is equal to the PhysicalDamage
         }
 
+        return new DamageResult(rawDamage, isCrit);
+    }
+
+    public DamageResult DamageTaken(DamageResult result) // Calculate damage taken after applying defense and damage reduction, takes into account the character's defense, armor, dodge chance, and block chance
+    {
+        int incomingDamage = result.RawDamage;
+
+        if(IsDodged)
+        {
+            result.IsDodged = true;
+            result.FinalDamage = 0;
+            result.TargetDied = IsDead;
+
+            return result;
+        }
         if (IsBlocked)
         {
-            incomingDamage = incomingDamage / 2; // If the character blocked the attack, then damage is reduced by 50%
+            result.IsBlocked = true;
+            incomingDamage /= 2;
         }
-        double damageAfterReduction = incomingDamage * (1 - (DamageReduction / 100)); // Apply damage reduction based on defense and armor
-        int actualdamage = (int)Math.Round(damageAfterReduction);
+    
+        double damageAfterReduction = incomingDamage * (1-(DamageReduction/100));
+        int finalDamage = (int)Math.Round(damageAfterReduction);
 
-        Health = Health - actualdamage;
-
+        Health -= finalDamage;
         if (Health < 0)
         {
             Health = 0;
         }
-        return actualdamage;
+
+        result.FinalDamage = finalDamage;
+        result.TargetDied = IsDead;
+
+        return result;
+        
     }
     protected void ResetResources() // Reset Health and Mana to Max values, can be called when the character levels up or when the character rests
     {

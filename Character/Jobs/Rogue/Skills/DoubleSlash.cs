@@ -14,20 +14,20 @@ public class DoubleSlash : Ability
         ManaCost = 10;
         Description = "You attack the Target twice with Normal Attacks. This has a 25% to Critcal Hit, per Hit";
     }
-    public override void Execute(Character User, Enemy Target)
+    public override void Execute(Character User, Character Target)
     {
         if (User.Mana >= ManaCost)
         {
             User.Mana -= ManaCost;                
-            int hit1 = User.NormalAttack(25);
-            int actualdamage1 = Target.DamageTaken(hit1);
-            Console.WriteLine($"Double Slash hits {Target.Name} for {actualdamage1} Damage.");
+            DamageResult result1 = User.NormalAttack(25);
+            result1 = Target.DamageTaken(result1);
+            Console.WriteLine($"Double Slash hits {Target.Name} for {result1.FinalDamage} Damage.");
             System.Threading.Thread.Sleep(1000);
             if (!Target.IsDead)
             {
-                int hit2 = User.NormalAttack(25);
-                int actualdamage2 = Target.DamageTaken(hit2);
-                Console.WriteLine($"Double Slash hits {Target.Name} for {actualdamage2} Damage.");
+                DamageResult result2 = User.NormalAttack(25);
+                result2 = Target.DamageTaken(result2);
+                Console.WriteLine($"Double Slash hits {Target.Name} for {result2.FinalDamage} Damage.");
                 System.Threading.Thread.Sleep(1000);
             }
         }
@@ -38,4 +38,3 @@ public class DoubleSlash : Ability
 
     }
 }
-
