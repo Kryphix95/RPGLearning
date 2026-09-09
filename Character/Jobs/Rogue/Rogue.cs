@@ -18,6 +18,7 @@ public class Rogue : Character // Rogue class inherits from Character class, wit
 
         // Rogue specific abilities can be added here 
         Abilities.Add(new DoubleSlash());
+        Abilities.Add(new PoisonStrike());
         
         
         // Maybe a Skilltre9e where you can choose between 2 Daggers,2 Swords or Fist like Weapons , each with their own unique abilities and effects

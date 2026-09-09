@@ -8,7 +8,7 @@ namespace GameAscendNamespace;
 
 public class Enemy : Character // Enemy class inherits from Character class, with Enemy specific stats and abilities
 {
-    public int ExperienceReward { get; set; } = 0; // Default experience reward value, goes up by 10 per level, Max level is 99, so max Experience reward is 990 at level 99
+    public int ExperienceReward { get; set; } = 0; //  Experience awarded for defeating this enemy, defined individually by each enemy type
 }
 
 // ENEMY TYPES

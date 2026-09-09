@@ -49,7 +49,7 @@ class Program
             new Rogue{Name = "Rogue" },
         };
 
-            List<Enemy> enemies = new List<Enemy>
+        List<Enemy> enemies = new List<Enemy>
         {
             new Goblin(),
             new Slime(),

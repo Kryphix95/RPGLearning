@@ -67,6 +67,12 @@ public class CombatSystem // Combat System class, handles the combat between the
 
             case "2":
 
+                if (player.Abilities.Count == 0)
+                {
+                    Console.WriteLine("You have no abilities to use!");
+                    break;
+                }
+
                 for (int i = 0; i < player.Abilities.Count; i++)
                 {
                     Console.WriteLine(
@@ -129,7 +135,6 @@ public class CombatSystem // Combat System class, handles the combat between the
             {
                 Character? participant = roundParticipants.Where(p => !p.IsDead && !actedParticipants.Contains(p)).OrderByDescending(p => p.Dexterity).FirstOrDefault(); // Get the next participant who has not acted yet and is not dead, ordered by dexterity
 
-
                 // If there are no more participants who have not acted yet, then break out of the loop and start a new round
                 if (participant == null)
                 {
@@ -144,29 +149,36 @@ public class CombatSystem // Combat System class, handles the combat between the
 
                 actedParticipants.Add(participant); // Add the participant to the list of participants who have acted
 
-                if (Players.Contains(participant))
-                {
-                    PlayerTurn(participant, Participants);
-                }
-                else if (participant is Enemy enemy)
-                {
-                    List<Character> validTargets = Players.Where(p => !p.IsDead).ToList(); // Get a list of valid targets (not dead)
-                    Character target = ChooseRandomTarget(validTargets);
-                    EnemyTurn(enemy, target);
+                participant.ProcessTurnStartEffects(); // Process the effects that do something on turn start of each character
 
+                // Checking if anything hinders the Character to play out their turn
+                bool actionPrevented = participant.ActiveEffects.Any(effect => effect.PreventsAction); 
+                if (!actionPrevented)
+                {
+                    if (Players.Contains(participant))
+                    {
+                        PlayerTurn(participant, Participants);
+                    }
+                    else if (participant is Enemy enemy)
+                    {
+                        List<Character> validTargets = Players.Where(p => !p.IsDead).ToList(); // Get a list of valid targets (not dead)
+                        Character target = ChooseRandomTarget(validTargets);
+                        EnemyTurn(enemy, target);
+
+                    }
                 }
+
+                participant.ProcessTurnEndEffects(); // process the effects at the end of the turn of each character
             }
         }
 
-    if (Enemies.All(e => e.IsDead))
+    if (Enemies.All(e => e.IsDead)) // Check if all enemies are dead
         {
             Console.WriteLine("Victory! All enemies have been defeated!");
         }
-        else if (Players.All(p => p.IsDead))
+        else if (Players.All(p => p.IsDead)) // Check if all players are dead
         {
             Console.WriteLine("Defeat! All players have been defeated!");
         }
-
-        // Combat logic goes here
     }
 }
