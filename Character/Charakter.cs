@@ -124,7 +124,7 @@ public class Character
     
     public List<Ability> Abilities { get; set; } = new List<Ability>(); // List of abilities the character has
     public List<StatusEffect> ActiveEffects { get; set; } = new List<StatusEffect>(); // List of status effects the character has
-    public void ApplyStatusEffect(StatusEffect effect) // Apply a status effect to the character, adds the effect to the ActiveEffects list and calls the OnApply method of the effect
+    public void ApplyStatusEffect(StatusEffect effect) // Apply a status effect to the character, adds the effect to the ActiveEffects list and calls the OnApply method of the effect if the Status doesnt exist already, if the Status effect already exists, then the duration of the existing effect is set to the maximum of the existing effect's duration and the new effect's duration
     {
         StatusEffect? existingEffect = ActiveEffects.FirstOrDefault(e => e.GetType() == effect.GetType()); // Check if the character already has the same type of status effect applied
         if (existingEffect != null)
