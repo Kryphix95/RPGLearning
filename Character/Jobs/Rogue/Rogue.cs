@@ -12,6 +12,7 @@ public class Rogue : Character // Rogue class inherits from Character class, wit
         Intelligence = 5;
         Dexterity = 15;
         Strength = 8;
+        Speed = 10;
         Luck = 7;
         Defense = 5;
         CritDMG = 10;
@@ -19,6 +20,7 @@ public class Rogue : Character // Rogue class inherits from Character class, wit
         // Rogue specific abilities can be added here 
         Abilities.Add(new DoubleSlash());
         Abilities.Add(new PoisonStrike());
+        Abilities.Add(new RendingSlash());
         
         
         // Maybe a Skilltre9e where you can choose between 2 Daggers,2 Swords or Fist like Weapons , each with their own unique abilities and effects

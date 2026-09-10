@@ -12,9 +12,10 @@ public class Warrior : Character // Warrior class inherits from Character class,
         Vitality = 15;
         Intelligence = -5;
         Dexterity = 5;
-        Strength = 13;
+        Strength = 10;
+        Speed = 4;
         Luck = 2;
-        Defense = 13;
+        Defense = 10;
         CritDMG = 2;
         ResetResources();
         // Warrior specific abilities can be added here // Maybe a Skilltree where you can choose between GreatSword, GreatAxe, each with their own unique abilities and effects

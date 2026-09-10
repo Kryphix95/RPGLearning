@@ -12,8 +12,9 @@ public class Mage : Character // Mage class inherits from Character class, with 
     {
         Vitality = -5;
         Intelligence = 20;
-        Dexterity = 7;
-        Strength = 3;
+        Dexterity = 3;
+        Strength = 2;
+        Speed = 5;
         Luck = 10;
         Defense = 2;
         CritDMG = 8;

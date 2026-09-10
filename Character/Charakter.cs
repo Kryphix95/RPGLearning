@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 using System.Linq;
 
 namespace GameAscendNamespace;
@@ -35,6 +36,7 @@ public class Character
     public int Vitality { get; set; } = 0; // Default vitality value, Health + 5 per Point of Vitality
     public int Intelligence { get; set; } = 0; // Default intelligence value, Mana + 5 per Point of Intelligence
     public int Dexterity { get; set; } = 0;     // Default dexterity value, Chance to dodge + 0,25% per Point of Dexterity, + 0,5% Crit Chance per Point of Dexterity
+    public int Speed { get; set; } = 0; // Default speed value, determines turn order in combat. can be increased by Buffs, effects, and abilities.
     public int Strength { get; set; } = 0;  // Contributes 1 point of PhysicalDamage per point of Strength
     public int Luck { get; set; } = 0; // Increases CritChance by 0.25% per point, additional loot effects may be added later
     public int Defense { get; set; } = 0; // Increases DamageReduction by 0.1% and BlockChance by 0.25% per point
@@ -123,6 +125,14 @@ public class Character
     // Methods for Status Effects and Abilities and how they are Handled, including applying effects, processing turn start and end effects, and removing expired effects
     
     public List<Ability> Abilities { get; set; } = new List<Ability>(); // List of abilities the character has
+    public void ProcessCooldowns()
+    {
+        foreach (Ability ability in Abilities)
+        {
+            ability.ReduceCooldown();
+        }
+    }
+
     public List<StatusEffect> ActiveEffects { get; set; } = new List<StatusEffect>(); // List of status effects the character has
     public void ApplyStatusEffect(StatusEffect effect) // Apply a status effect to the character, adds the effect to the ActiveEffects list and calls the OnApply method of the effect if the Status doesnt exist already, if the Status effect already exists, then the duration of the existing effect is set to the maximum of the existing effect's duration and the new effect's duration
     {

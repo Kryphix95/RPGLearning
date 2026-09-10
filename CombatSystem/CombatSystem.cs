@@ -28,84 +28,110 @@ public class CombatSystem // Combat System class, handles the combat between the
     }
     static void PlayerTurn(Character player, List<Character> participants) // Player Turn method, handles the player's turn in combat
     {
-        Console.WriteLine("It's " + player.Name + "'s turn!");
-        Console.WriteLine("What would you like to do?");
-        Console.WriteLine("1. Attack");
-        Console.WriteLine("2. Use Ability");
-        Console.WriteLine("3. Use Item");
-        Console.WriteLine("4. Flee");
-        string input = Console.ReadLine();
-        switch (input)
+        while (true)
         {
-            case "1":
-                List<Character> attackTargets = participants.Where(t => !t.IsDead).ToList(); // Get a list of valid targets (not dead)
+            Console.WriteLine("It's " + player.Name + "'s turn!");
+            Console.WriteLine("What would you like to do?");
+            Console.WriteLine("1. Attack");
+            Console.WriteLine("2. Use Ability");
+            Console.WriteLine("3. Use Item");
+            Console.WriteLine("4. Flee");
+            string input = Console.ReadLine();
+            switch (input)
+            {
+                case "1":
+                    List<Character> attackTargets = participants.Where(t => !t.IsDead).ToList(); // Get a list of valid targets (not dead)
 
-                Character target = ChooseTarget(attackTargets); // Choose a target from the list of valid targets
+                    Character target = ChooseTarget(attackTargets); // Choose a target from the list of valid targets
 
-                DamageResult result = player.NormalAttack();
-                result = target.DamageTaken(result);
+                    DamageResult result = player.NormalAttack();
+                    result = target.DamageTaken(result);
 
-                if (result.IsCrit)
-                {
-                    Console.WriteLine("Critical Hit!");
-                }
+                    if (result.IsCrit)
+                    {
+                        Console.WriteLine("Critical Hit!");
+                    }
 
-                if (result.IsDodged)
-                {
-                    Console.WriteLine(target.Name + " dodged the attack!");
-                }
+                    if (result.IsDodged)
+                    {
+                        Console.WriteLine(target.Name + " dodged the attack!");
+                    }
 
-                if (result.IsBlocked)
-                {
-                    Console.WriteLine(target.Name + " blocked the attack!");
-                }
-
-
-                Console.WriteLine(player.Name + " attacked " + target.Name + " for " + result.FinalDamage + " damage!");
-                break;
+                    if (result.IsBlocked)
+                    {
+                        Console.WriteLine(target.Name + " blocked the attack!");
+                    }
 
 
-            case "2":
+                    Console.WriteLine(player.Name + " attacked " + target.Name + " for " + result.FinalDamage + " damage!");
+                    return;
 
-                if (player.Abilities.Count == 0)
-                {
-                    Console.WriteLine("You have no abilities to use!");
+
+                case "2":
+
+                    if (player.Abilities.Count == 0)
+                    {
+                        Console.WriteLine("You have no abilities to use!");
+                        continue;
+                    }
+
+                    for (int i = 0; i < player.Abilities.Count; i++)
+                    {
+                        Console.WriteLine(
+                            $"{i + 1}. {player.Abilities[i].Name} - Mana: {player.Abilities[i].ManaCost} - Cooldown: {player.Abilities[i].RemainingCooldown}"
+                        );
+                    }
+
+                    string abilityInput = Console.ReadLine();
+                    int abilityIndex = int.Parse(abilityInput) - 1;
+
+                    Ability selectedAbility = player.Abilities[abilityIndex];
+                    if (selectedAbility.RemainingCooldown > 0)
+                    {
+                        Console.WriteLine("That ability is on cooldown!");
+                        continue;
+                    }
+                    if (player.Mana < selectedAbility.ManaCost)
+                    {
+                        Console.WriteLine("You do not have enough mana to use that ability!");
+                        continue;
+                    }
+
+                    List<Character> abilityTargets = participants.Where(t => !t.IsDead).ToList();
+
+                    Character abilityTarget = ChooseTarget(abilityTargets);
+                    selectedAbility.Execute(player, abilityTarget);
+
+                    return;
+
+                case "3":
+                    // Item logic goes here
                     break;
-                }
 
-                for (int i = 0; i < player.Abilities.Count; i++)
-                {
-                    Console.WriteLine(
-                        $"{i + 1}. {player.Abilities[i].Name} - Mana: {player.Abilities[i].ManaCost}"
-                    );
-                }
-
-                string abilityInput = Console.ReadLine();
-                int abilityIndex = int.Parse(abilityInput) - 1;
-
-                Ability selectedAbility = player.Abilities[abilityIndex];
-
-                List<Character> abilityTargets  = participants.Where(t => !t.IsDead).ToList();
-
-                Character abilityTarget = ChooseTarget(abilityTargets);
-
-                selectedAbility.Execute(player, abilityTarget);
-
-                break;
-
-            case "3":
-                // Item logic goes here
-                break;
-
-            case "4":
-                // Flee logic goes here
-                break;
+                case "4":
+                    // Flee logic goes here
+                    break;
+            }
         }
     }
     static void EnemyTurn(Enemy enemy, Character target) // Enemy Turn method, handles the enemy's turn in combat
     {
         DamageResult result = enemy.NormalAttack();
         result = target.DamageTaken(result);
+        if (result.IsCrit)
+        {
+            Console.WriteLine("Critical Hit!");
+        }
+
+        if (result.IsDodged)
+        {
+            Console.WriteLine(target.Name + " dodged the attack!");
+        }
+
+        if (result.IsBlocked)
+        {
+            Console.WriteLine(target.Name + " blocked the attack!");
+        }
 
         Console.WriteLine(enemy.Name + " attacked " + target.Name + " for " + result.FinalDamage + " damage!");
     }
@@ -133,7 +159,7 @@ public class CombatSystem // Combat System class, handles the combat between the
 
             while (true)
             {
-                Character? participant = roundParticipants.Where(p => !p.IsDead && !actedParticipants.Contains(p)).OrderByDescending(p => p.Dexterity).FirstOrDefault(); // Get the next participant who has not acted yet and is not dead, ordered by dexterity
+                Character? participant = roundParticipants.Where(p => !p.IsDead && !actedParticipants.Contains(p)).OrderByDescending(p => p.Speed).FirstOrDefault(); // Get the next participant who has not acted yet and is not dead, ordered by speed
 
                 // If there are no more participants who have not acted yet, then break out of the loop and start a new round
                 if (participant == null)
@@ -149,6 +175,7 @@ public class CombatSystem // Combat System class, handles the combat between the
 
                 actedParticipants.Add(participant); // Add the participant to the list of participants who have acted
 
+                participant.ProcessCooldowns(); // Process the cooldowns of each character
                 participant.ProcessTurnStartEffects(); // Process the effects that do something on turn start of each character
 
                 // Checking if anything hinders the Character to play out their turn

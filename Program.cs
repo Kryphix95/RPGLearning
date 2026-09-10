@@ -18,6 +18,9 @@ class Program
                 // Greataxe
                 // Staff
                 // Hammer
+                // Bow
+                // Gloves
+                // Relic
         // Armor
             // Armor Types 
                 // Cloth
@@ -47,7 +50,8 @@ class Program
             List<Character> players = new List<Character>
         {
             new Rogue{Name = "Rogue" },
-        };
+            new Cleric{Name = "Cleric" },
+          };
 
         List<Enemy> enemies = new List<Enemy>
         {
