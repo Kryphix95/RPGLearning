@@ -10,10 +10,10 @@ public class Rogue : Character // Rogue class inherits from Character class, wit
     {
         Vitality = 0;
         Intelligence = 5;
-        Dexterity = 15;
-        Strength = 8;
+        Dexterity = 10;
+        Strength = 7;
         Speed = 10;
-        Luck = 7;
+        Luck = 10;
         Defense = 5;
         CritDMG = 10;
 

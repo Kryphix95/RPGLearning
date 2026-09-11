@@ -9,7 +9,7 @@ public class Warrior : Character // Warrior class inherits from Character class,
 {
     public Warrior()
     {
-        Vitality = 15;
+        Vitality = 10;
         Intelligence = -5;
         Dexterity = 5;
         Strength = 10;
@@ -19,6 +19,11 @@ public class Warrior : Character // Warrior class inherits from Character class,
         CritDMG = 2;
         ResetResources();
         // Warrior specific abilities can be added here // Maybe a Skilltree where you can choose between GreatSword, GreatAxe, each with their own unique abilities and effects
+        Abilities.Add(new Hamstring());
+        Abilities.Add(new IronGuard());
+        Abilities.Add(new ShieldBash());
+        Abilities.Add(new HeavyStrike());
+
         // GreatSword = Damage + Stun + Selfhealth  and has Higher Defense Paramters = Percentage of Damage dealt is converted to Health, GreatSword has a higher percentage of Damage dealt converted to Health than GreatAxe
         // GreatAxe = Damage + Stun + Selfhealth = Percentage of Damage dealt is converted to Health, GreatSword has a higher percentage of Damage dealt converted to Health than GreatAxe
         // Selfhealth = Damage + Heal = Percentage of Damage dealt is converted to Health, GreatSword has a higher percentage of Damage dealt converted to Health than GreatAxe

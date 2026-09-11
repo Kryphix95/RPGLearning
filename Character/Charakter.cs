@@ -35,23 +35,45 @@ public class Character
     public int Mana { get; set; }  // Default mana value
     public int Vitality { get; set; } = 0; // Default vitality value, Health + 5 per Point of Vitality
     public int Intelligence { get; set; } = 0; // Default intelligence value, Mana + 5 per Point of Intelligence
-    public int Dexterity { get; set; } = 0;     // Default dexterity value, Chance to dodge + 0,25% per Point of Dexterity, + 0,5% Crit Chance per Point of Dexterity
+    public int Dexterity { get; set; } = 0; // Increases DodgeChance by 0.25% and PhysicalCritChance by 0.15% per point.
     public int Speed { get; set; } = 0; // Default speed value, determines turn order in combat. can be increased by Buffs, effects, and abilities.
     public int Strength { get; set; } = 0;  // Contributes 1 point of PhysicalDamage per point of Strength
-    public int Luck { get; set; } = 0; // Increases CritChance by 0.25% per point, additional loot effects may be added later
+    public int Luck { get; set; } = 0; // Increases Physical and Magical CritChance by 0.5% per point. Additionally it should increase loot drop chance later on
     public int Defense { get; set; } = 0; // Increases DamageReduction by 0.1% and BlockChance by 0.25% per point
-    public string Weapon { get; set; } = ""; // Default weapon value, Player can change it via inventory or shop, Weapon can be a Sword, Axe, Bow, Staff, Dagger, etc.
+    
+
     public int Armor { get; set; } = 0;
     public double BlockChance => Defense * 0.25; // Default block chance value, Block chance + 0,25% per Point of Defense
-    public double DamageReduction => Math.Min((Defense * 0.1 + Armor * 0.5), 75); // Default damage reduction value, Damage reduction + 1% per 10 Points of Defense and + 0.5% per Point of Armor
+    public double DamageReduction => Math.Min((Defense * 0.1 + Armor * 0.5), 75); // Default damage reduction value, Damage reduction + 1% per 10 Points of Defense and + 0.5% per Point of Armor 
     public double DodgeChance => Dexterity * 0.25; // Default dodge chance value, Dodge chance + 0,25% per Point of Dexterity
+    public Dictionary<DamageType, double> Resistances { get; set; } = new Dictionary<DamageType, double>();
+    public double GetResistance(DamageType damageType) // Get the resistance value for a specific damage type, returns 0 if the damage type is not found in the Resistances dictionary
+    {
+        if (Resistances.TryGetValue(damageType, out double resistance))
+        {
+            return resistance;
+        }
+        return 0;
+    }
+
+
     public int WeaponDamage { get; set; } = 0;
     public int PhysicalDamage => Strength + WeaponDamage; // Default damage value, Strength + Weapon Damage
     public int MagicalDamage => Intelligence + WeaponDamage; // Default damage value, Intelligence + Weapon Damage
+    
     public double BonusCritChance { get; set; } = 0; // Default Bonus Chance to Crits wich get Increased by Items Buffs etc 
-    public double CritChance => (Dexterity * 0.5) + (Luck * 0.25) + BonusCritChance; // Default crit chance value, Crit chance + 0,5% per Point of Dexterity, + 0,25% per Point of Luck
+    public double PhysicalCritChance => (Luck * 0.5 + Dexterity * 0.15) + BonusCritChance; // Default physical crit chance value, Crit chance + 0.5% per Point of Luck and + 0.15% per Point of Dexterity, + BonusCritChance
+    public double MagicalCritChance => (Luck * 0.5) + BonusCritChance; // Default magical crit chance value, Crit chance + 0.5% per Point of Luck + BonusCritChance
+    
+    private bool IsCrit(double baseCritChance, double additionalCritChance = 0)
+    {
+        return Random.Shared.NextDouble() * 100
+            < Math.Clamp(baseCritChance + additionalCritChance, 0, 100);
+    }
     public int CritDMG { get; set; } = 0; // Default crit damage value, Crit damage + 1% per Point of CritDMG
     public double CritMultiplier => 1.5 + (CritDMG * 0.01); // Default crit multiplier value, Crit damage + 1% per Point of CritDMG
+    
+    
     public bool IsDead => Health <= 0; // Check if the character is dead, if Health is less than or equal to 0, then the character is dead
     private bool IsDodged => Random.Shared.NextDouble() * 100 < Math.Clamp(DodgeChance, 0, 100); // Check if the character dodged the attack, if Random number between 0 and 100 is less than DodgeChance, then the character dodged the attack
     private bool IsBlocked => Random.Shared.NextDouble() * 100 < Math.Clamp(BlockChance, 0, 100); // Check if the character blocked the attack, if Random number between 0 and 100 is less than BlockChance, then the character blocked the attack
@@ -59,14 +81,10 @@ public class Character
 
 
     // Methods for Combat, including Normal Attack and Damage Taken, which calculate the damage dealt and taken by the character, taking into account the character's stats and abilities
-    
-    private bool IsCrit(double additionalCritChance = 0)
-    { 
-        return Random.Shared.NextDouble() * 100 < Math.Clamp(CritChance + additionalCritChance, 0, 100); // Check if the character got a Crit, if Random number between 0 and 100 is less than CritChance, then the character got a Crit
-    }
+
     public DamageResult NormalAttack(double additionalCritChance = 0) // Normal Attack method, calculates the damage for a normal attack, takes into account the character's strength, weapon damage, and crit chance
     {
-        bool isCrit = IsCrit(additionalCritChance);
+        bool isCrit = IsCrit(PhysicalCritChance, additionalCritChance);
         int rawDamage;
 
         if (isCrit)
@@ -79,9 +97,26 @@ public class Character
             rawDamage = PhysicalDamage; // If the character didn't get a Crit, then the damage is equal to the PhysicalDamage
         }
 
-        return new DamageResult(rawDamage, isCrit);
+        return new DamageResult(rawDamage, isCrit, DamageType.Physical);
     }
-    public DamageResult DamageTaken(DamageResult result) // Calculate damage taken after applying defense and damage reduction, takes into account the character's defense, armor, dodge chance, and block chance
+    public DamageResult MagicAttack(DamageType damageType,double damageMultiplier = 1.0 ,double additionalCritChance = 0)
+    {
+        bool isCrit = IsCrit(MagicalCritChance, additionalCritChance);
+        double rawDamage = MagicalDamage * damageMultiplier;
+        if (isCrit)
+        {
+            rawDamage *= CritMultiplier; // If the character got a Crit, then the damage is multiplied by the CritMultiplier
+        }
+
+        int finalRawDamage = Math.Max(1, (int)Math.Round(rawDamage));
+
+        return new DamageResult(finalRawDamage, isCrit, damageType);
+    }
+
+
+    // Calculates incoming damage based on Dodge, Block, Physical mitigation
+    // and the Resistance or Weakness of the incoming DamageType.
+    public DamageResult DamageTaken(DamageResult result) 
     {
         int incomingDamage = result.RawDamage;
 
@@ -99,8 +134,24 @@ public class Character
             incomingDamage /= 2;
         }
     
-        double damageAfterReduction = incomingDamage * (1-(DamageReduction/100));
-        int finalDamage = (int)Math.Round(damageAfterReduction);
+        double damageAfterReduction = incomingDamage;
+
+        // defense and armor reduce only Physical damage
+        if(result.DamageType == DamageType.Physical)
+        {
+            damageAfterReduction *= (1 - DamageReduction / 100);
+            if (ActiveEffects.OfType<IronGuardEffect>().Any())
+            {
+                damageAfterReduction *= 0.7; // Apply Iron Guard reduction (30% less damage)
+            }
+        }
+
+        // Apply Resistance or Weakness for the incoming DamageType.
+        // Negative values increase damage taken. Values are clamped between -100 and 100.
+        double resistance = Math.Clamp(GetResistance(result.DamageType), -100, 100);
+        damageAfterReduction *= (1 - resistance / 100);
+
+        int finalDamage = Math.Max( 0, (int)Math.Round(damageAfterReduction));
 
         Health -= finalDamage;
         if (Health < 0)
@@ -114,18 +165,18 @@ public class Character
         return result;
         
     }
+    
+   
     protected void ResetResources() // Reset Health and Mana to Max values, can be called when the character levels up or when the character rests
     {
         Health = MaxHealth;
         Mana = MaxMana;
     }
 
-
-
     // Methods for Status Effects and Abilities and how they are Handled, including applying effects, processing turn start and end effects, and removing expired effects
     
     public List<Ability> Abilities { get; set; } = new List<Ability>(); // List of abilities the character has
-    public void ProcessCooldowns()
+    public void ProcessCooldowns() // Process the cooldowns of the character's abilities, calls the ReduceCooldown method of each ability
     {
         foreach (Ability ability in Abilities)
         {

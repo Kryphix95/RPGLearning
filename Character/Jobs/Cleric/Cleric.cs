@@ -10,7 +10,7 @@ namespace GameAscendNamespace;
     public Cleric()
     {
             Vitality = 10;
-            Intelligence = 10;
+            Intelligence = 7;
             Dexterity = 3;
             Strength = 5;
             Speed = 4;
@@ -23,6 +23,7 @@ namespace GameAscendNamespace;
             Abilities.Add(new SmallRegeneration());
             Abilities.Add(new MinorHeal());
             Abilities.Add(new Haste());
+            Abilities.Add(new MinorSmite());
 
         // Holy = Damage + Heal
         // Dark = Damage + Drain
