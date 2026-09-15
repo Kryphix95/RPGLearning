@@ -203,9 +203,9 @@ public class Character
             effect.OnTurnStart(this);
         }
     }
-    public void ProcessTurnEndEffects() // Process the end of the character's turn, calls the OnTurnEnd method of each active status effect, decrements the duration of each effect, and removes any effects that have expired
+    public void ProcessTurnEndEffects(List<StatusEffect> effectsAtTurnStart) // Processes status effects that were already active at the start of the turn.// Processes status effects that were already active at the start of the turn.
     {
-        foreach (StatusEffect effect in ActiveEffects.ToList()) // temporary list to avoid modification during iteration
+        foreach (StatusEffect effect in effectsAtTurnStart) // temporary list to avoid modification during iteration
         {
             effect.OnTurnEnd(this);
             effect.Duration--;

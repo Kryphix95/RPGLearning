@@ -13,6 +13,7 @@ public class Meditation : Ability
     {
         if (user.Mana < user.MaxMana)
         {
+            TargetType = TargetType.Self;
             this.StartCooldown();
             int manaRestored = (int)Math.Min(50, user.MaxMana - user.Mana); // Restore 50 Mana
             user.Mana += manaRestored;

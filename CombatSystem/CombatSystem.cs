@@ -26,6 +26,32 @@ public class CombatSystem // Combat System class, handles the combat between the
         int targetIndex = RandomNumberGenerator.GetInt32(0, targets.Count);
         return targets[targetIndex];
     }
+    
+    static List<Character> GetValidTargets(Character participant,TargetType targetType, List<Character> participants) // Get Valid Targets method, handles the target selection for the player and enemy
+    {
+            switch (targetType)
+            {
+                case TargetType.Any:
+                    return participants.Where(t => !t.IsDead).ToList();
+
+                case TargetType.Ally:
+                    return participants.Where(t => !t.IsDead && (t is Enemy) == (participant is Enemy)).ToList();
+
+                case TargetType.DeadAlly:
+                    return participants.Where(t => t.IsDead &&(t is Enemy) == (participant is Enemy)).ToList();
+
+                case TargetType.Self:
+                    return new List<Character> { participant };
+
+                case TargetType.Enemy:
+                    return participants.Where(t => !t.IsDead &&(t is Enemy) != (participant is Enemy)).ToList();
+
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+        
+    }
+    
     static void PlayerTurn(Character player, List<Character> participants) // Player Turn method, handles the player's turn in combat
     {
         while (true)
@@ -97,7 +123,7 @@ public class CombatSystem // Combat System class, handles the combat between the
                         continue;
                     }
 
-                    List<Character> abilityTargets = participants.Where(t => !t.IsDead).ToList();
+                    List<Character> abilityTargets = GetValidTargets(player, selectedAbility.TargetType, participants);
 
                     Character abilityTarget = ChooseTarget(abilityTargets);
                     selectedAbility.Execute(player, abilityTarget);
@@ -176,6 +202,9 @@ public class CombatSystem // Combat System class, handles the combat between the
                 actedParticipants.Add(participant); // Add the participant to the list of participants who have acted
 
                 participant.ProcessCooldowns(); // Process the cooldowns of each character
+
+                List<StatusEffect> effectsAtTurnStart = participant.ActiveEffects.ToList(); // Snapshot of all status effects that were already active at the start of this turn
+
                 participant.ProcessTurnStartEffects(); // Process the effects that do something on turn start of each character
 
                 // Checking if anything hinders the Character to play out their turn
@@ -195,7 +224,7 @@ public class CombatSystem // Combat System class, handles the combat between the
                     }
                 }
 
-                participant.ProcessTurnEndEffects(); // process the effects at the end of the turn of each character
+                participant.ProcessTurnEndEffects(effectsAtTurnStart); // process the effects at the end of the turn of each character
             }
         }
 

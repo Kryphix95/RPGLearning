@@ -22,6 +22,7 @@ public class Slime : Enemy
         Strength = 2;
         Dexterity = 1;
         Luck = 0;
+        Speed = 3;
         Resistances[DamageType.Physical] = 100; // Slimes are immune to physical damage
 
         Defense = 1;
@@ -42,6 +43,7 @@ public class Goblin : Enemy
         Strength = 3;
         Dexterity = 2;
         Luck = 1;
+        Speed = 5;
         // add resistance stats here if needed
         Defense = 2;
         CritDMG = 2;

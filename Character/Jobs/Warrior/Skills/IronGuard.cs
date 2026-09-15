@@ -16,7 +16,7 @@ public class IronGuard : Ability
             User.Mana -= ManaCost;
             this.StartCooldown();
             Console.WriteLine($"{User.Name} uses {Name}, reducing incoming Physical damage by 30%!");
-            User.ApplyStatusEffect(new IronGuardEffect(4)); // Stored as 4 to Apply an Iron Guard effect that lasts for 3 turns and reduces damage by 30%
+            User.ApplyStatusEffect(new IronGuardEffect(3)); // Apply the Iron Guard effect for 3 turns
         }
         else
         {

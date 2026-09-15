@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.Cryptography;
-
-
-namespace GameAscendNamespace;
+﻿namespace GameAscendNamespace;
 
     public class Ability
     {
@@ -14,6 +8,11 @@ namespace GameAscendNamespace;
         public int Duration { get; set; } = 0;
         public int Cooldown { get; set; } = 0;
         public int RemainingCooldown { get; set; } = 0;
+        
+        public TargetType TargetType { get; set; } = TargetType.Any;
+        public int TargetCount { get; set; } = 1;
+
+
         public void ReduceCooldown()
         { 
             if(RemainingCooldown > 0)
@@ -27,5 +26,7 @@ namespace GameAscendNamespace;
     }
         public virtual void Execute(Character User, Character Target)
         { }
+
+
         public string Description { get; set; } = string.Empty;
 }

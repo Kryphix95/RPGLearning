@@ -8,6 +8,7 @@ namespace GameAscendNamespace;
 
 class Program
 {
+    //CHECKLIST of features to implement in the game:
 
     /* EQUIPMENT
         // Weapons
@@ -40,7 +41,6 @@ class Program
                 // Earring
     */
     // INVENTORY SYSTEM
-    // EQUIPMENT SYSTEM
     // CONSUMABLE SYSTEM
     // SHOP SYSTEM
 
