@@ -9,8 +9,9 @@ public class SmallRegeneration : Ability
         Cooldown = 2;
         Description = "Cast a Spell on the Target, that heals it at the start of its Turn. For 4 Turns";
     }
-    public override void Execute(Character User, Character Target)
+    public override void Execute(Character User, List<Character> Targets)
     {
+        Character Target = Targets[0];
         if (User.Mana >= ManaCost)
         {
             User.Mana -= ManaCost;

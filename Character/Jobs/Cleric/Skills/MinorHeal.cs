@@ -9,8 +9,9 @@ public class  MinorHeal : Ability
         Cooldown = 1;
         Description = "Heals the Target for a minor Amount of their HP.";
     }
-    public override void Execute(Character User, Character Target)
+    public override void Execute(Character User, List<Character> Targets)
     {
+        Character Target = Targets[0];
 
         if(User.Mana >= ManaCost)
         {

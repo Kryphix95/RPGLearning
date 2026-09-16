@@ -24,7 +24,7 @@
         {
             RemainingCooldown = Cooldown + 1; // +1 because the cooldown is reduced at the start of the turn, so if the ability has a cooldown of 2, it will be available again after 2 turns.
     }
-        public virtual void Execute(Character User, Character Target)
+        public virtual void Execute(Character User, List<Character> Targets)
         { }
 
 

@@ -12,8 +12,9 @@ public class PoisonStrike : Ability
         Cooldown = 3;
     }
 
-    public override void Execute(Character User, Character Target)
+    public override void Execute(Character User, List <Character> Targets)
     {
+        Character Target = Targets[0];
         if (User.Mana >= ManaCost)
         {
             User.Mana -= ManaCost;

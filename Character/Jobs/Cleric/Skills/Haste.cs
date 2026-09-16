@@ -10,8 +10,9 @@ public class  Haste : Ability
         Description = "Cast a Spell on the Target, that increases its Speed for 3 Turns";
     }
 
-    public override void Execute(Character User, Character Target)
+    public override void Execute(Character User, List<Character> Targets)
     {
+        Character Target = Targets[0];
         if (User.Mana >= ManaCost)
         {
             User.Mana -= ManaCost;

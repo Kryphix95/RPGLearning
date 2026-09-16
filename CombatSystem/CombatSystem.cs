@@ -9,18 +9,42 @@ namespace GameAscendNamespace;
 
 public class CombatSystem // Combat System class, handles the combat between the player and the enemy
 {
-    static Character ChooseTarget(List<Character> targets) // Choose Target method, handles the target selection for the player
+    static List<Character> ChooseTargets(List<Character> validTargets, int targetCount)
     {
-        Console.WriteLine("Choose your Target:");
-        for (int i = 0; i < targets.Count; i++)
+        List<Character> selectedTargets = new List<Character>();
+
+        if (targetCount == 0)
         {
-            Console.WriteLine($"{i + 1}. {targets[i].Name} - HP: {targets[i].Health}/{targets[i].MaxHealth}");
+            return validTargets.ToList();
         }
-        string targetInput = Console.ReadLine();
-        int targetNumber = int.Parse(targetInput);
-        int targetIndex = targetNumber - 1;
-        return targets[targetIndex];
+
+        int targetsToChoose = Math.Min(targetCount, validTargets.Count);
+
+        List<Character> availableTargets = validTargets.ToList();
+
+        while (selectedTargets.Count < targetsToChoose)
+        {
+            Console.WriteLine("Choose your Target:");
+
+            for (int i = 0; i < availableTargets.Count; i++)
+            {
+                Console.WriteLine(
+                    $"{i + 1}. {availableTargets[i].Name} - HP: {availableTargets[i].Health}/{availableTargets[i].MaxHealth}");
+            }
+
+            string targetInput = Console.ReadLine();
+            int targetNumber = int.Parse(targetInput);
+            int targetIndex = targetNumber - 1;
+
+            Character selectedTarget = availableTargets[targetIndex];
+
+            selectedTargets.Add(selectedTarget);
+            availableTargets.Remove(selectedTarget);
+        }
+
+        return selectedTargets;
     }
+
     static Character ChooseRandomTarget(List<Character> targets) // Choose Random Target method, handles the target selection for the enemy
     {
         int targetIndex = RandomNumberGenerator.GetInt32(0, targets.Count);
@@ -66,9 +90,10 @@ public class CombatSystem // Combat System class, handles the combat between the
             switch (input)
             {
                 case "1":
-                    List<Character> attackTargets = participants.Where(t => !t.IsDead).ToList(); // Get a list of valid targets (not dead)
+                    List<Character> attackTargets = GetValidTargets(player, TargetType.Any, participants); // Get a list of valid targets for the player to attack
 
-                    Character target = ChooseTarget(attackTargets); // Choose a target from the list of valid targets
+                    List<Character> targets = ChooseTargets(attackTargets, 1); // Choose targets from the list of valid targets
+                    Character target = targets[0];
 
                     DamageResult result = player.NormalAttack();
                     result = target.DamageTaken(result);
@@ -125,8 +150,9 @@ public class CombatSystem // Combat System class, handles the combat between the
 
                     List<Character> abilityTargets = GetValidTargets(player, selectedAbility.TargetType, participants);
 
-                    Character abilityTarget = ChooseTarget(abilityTargets);
-                    selectedAbility.Execute(player, abilityTarget);
+                    List<Character> selectedAbilityTargets = ChooseTargets(abilityTargets, selectedAbility.TargetCount);
+
+                    selectedAbility.Execute(player, selectedAbilityTargets);
 
                     return;
 

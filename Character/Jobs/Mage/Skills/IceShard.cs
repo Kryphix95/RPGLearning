@@ -10,19 +10,20 @@ public class  IceShard : Ability
         Cooldown = 2;
         Description = "A shard of ice that deals damage and slows the target.";
     }
-    public override void Execute(Character user, Character target)
+    public override void Execute(Character user, List<Character> Targets)
     {
+        Character Target = Targets[0];
         if (user.Mana >= ManaCost)
         {
             user.Mana -= ManaCost;
             this.StartCooldown();
             DamageResult result = user.MagicAttack(DamageType.Ice);
-            result = target.DamageTaken(result);
-            Console.WriteLine($"Ice Shard hits {target.Name} for {result.FinalDamage} Damage. " + $"Crit: {result.IsCrit}, Block: {result.IsBlocked}, Dodge: {result.IsDodged}, Type: {result.DamageType}");
-            if (!result.IsDodged && !target.IsDead)
+            result = Target.DamageTaken(result);
+            Console.WriteLine($"Ice Shard hits {Target.Name} for {result.FinalDamage} Damage. " + $"Crit: {result.IsCrit}, Block: {result.IsBlocked}, Dodge: {result.IsDodged}, Type: {result.DamageType}");
+            if (!result.IsDodged && !Target.IsDead)
             {
-                target.ApplyStatusEffect(new SlowEffect(2, 3)); // Apply Slow effect for 2 turns, reducing speed by 3
-                Console.WriteLine($"{target.Name} is slowed!");
+                Target.ApplyStatusEffect(new SlowEffect(2, 3)); // Apply Slow effect for 2 turns, reducing speed by 3
+                Console.WriteLine($"{Target.Name} is slowed!");
             }
         }
         else

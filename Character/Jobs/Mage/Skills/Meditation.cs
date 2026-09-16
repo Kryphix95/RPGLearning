@@ -8,12 +8,13 @@ public class Meditation : Ability
         ManaCost = 0;
         Cooldown = 5;
         Description = "Meditate to restore a portion of your Mana.";
+        TargetType = TargetType.Self;
     }
-    public override void Execute(Character user, Character target)
+    public override void Execute(Character user, List<Character> targets)
     {
+        Character target = targets[0];
         if (user.Mana < user.MaxMana)
         {
-            TargetType = TargetType.Self;
             this.StartCooldown();
             int manaRestored = (int)Math.Min(50, user.MaxMana - user.Mana); // Restore 50 Mana
             user.Mana += manaRestored;

@@ -10,8 +10,9 @@ public class RendingSlash : Ability
         Description = "You attack the Target with a Normal Attack, and apply a Bleed Effect with a 75% chance to activate.";
     }
 
-    public override void Execute(Character User, Character Target)
+    public override void Execute(Character User, List <Character> Targets)
     {
+        Character Target = Targets[0];
         if (User.Mana >= ManaCost)
         {
             User.Mana -= ManaCost;

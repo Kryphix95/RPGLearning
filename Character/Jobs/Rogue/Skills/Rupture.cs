@@ -9,8 +9,9 @@ public class Rupture : Ability
         Cooldown = 5; // Cooldown in turns
         Description = "Performs a Normal Attack. If the Target is Bleeding, the attack is guaranteed to Critical Strike and deals increased Damage and refreshes Bleed.";
     }
-    public override void Execute(Character User, Character Target)
+    public override void Execute(Character User, List <Character> Targets)
     {
+        Character Target = Targets[0];
         if (User.Mana >= ManaCost)
         {
             User.Mana -= ManaCost;

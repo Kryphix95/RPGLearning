@@ -203,7 +203,7 @@ public class Character
             effect.OnTurnStart(this);
         }
     }
-    public void ProcessTurnEndEffects(List<StatusEffect> effectsAtTurnStart) // Processes status effects that were already active at the start of the turn.// Processes status effects that were already active at the start of the turn.
+    public void ProcessTurnEndEffects(List<StatusEffect> effectsAtTurnStart) // Processes status effects that were already active at the start of the turn
     {
         foreach (StatusEffect effect in effectsAtTurnStart) // temporary list to avoid modification during iteration
         {

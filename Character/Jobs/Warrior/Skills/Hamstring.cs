@@ -9,8 +9,9 @@ public class Hamstring : Ability
         ManaCost = 20;
         Cooldown = 5;
     }
-    public override void Execute(Character User, Character Target)
+    public override void Execute(Character User, List <Character> Targets)
     {
+        Character Target = Targets[0];
         if (User.Mana >= ManaCost)
         {
             User.Mana -= ManaCost;
