@@ -133,17 +133,20 @@ public class Character
             result.IsBlocked = true;
             incomingDamage /= 2;
         }
-    
+
         double damageAfterReduction = incomingDamage;
 
-        // defense and armor reduce only Physical damage
-        if(result.DamageType == DamageType.Physical)
+        // Defense and Armor reduce only Physical damage
+        if (result.DamageType == DamageType.Physical)
         {
             damageAfterReduction *= (1 - DamageReduction / 100);
-            if (ActiveEffects.OfType<IronGuardEffect>().Any())
-            {
-                damageAfterReduction *= 0.7; // Apply Iron Guard reduction (30% less damage)
-            }
+        }
+
+        // Active Status Effects can modify incoming damage
+        foreach (StatusEffect effect in ActiveEffects)
+        {
+            damageAfterReduction =
+                effect.ModifyIncomingDamage(damageAfterReduction, result.DamageType);
         }
 
         // Apply Resistance or Weakness for the incoming DamageType.
@@ -205,7 +208,7 @@ public class Character
     }
     public void ProcessTurnEndEffects(List<StatusEffect> effectsAtTurnStart) // Processes status effects that were already active at the start of the turn
     {
-        foreach (StatusEffect effect in effectsAtTurnStart) // temporary list to avoid modification during iteration
+        foreach (StatusEffect effect in effectsAtTurnStart) // Process only effects that were active at the start of the turn
         {
             effect.OnTurnEnd(this);
             effect.Duration--;

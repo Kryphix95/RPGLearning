@@ -25,12 +25,13 @@ public class DoubleSlash : Ability
 
             DamageResult result1 = User.NormalAttack(25);
             result1 = Target.DamageTaken(result1);
-            Console.WriteLine($"Damage: {result1.FinalDamage} | Crit: {result1.IsCrit} | Block: {result1.IsBlocked} | Dodge: {result1.IsDodged}"
-);
+            Console.WriteLine($"Damage: {result1.FinalDamage} | Crit: {result1.IsCrit} | Block: {result1.IsBlocked} | Dodge: {result1.IsDodged}");
+
             if (!Target.IsDead)
             {
                 DamageResult result2 = User.NormalAttack(25);
                 result2 = Target.DamageTaken(result2);
+                Console.WriteLine($"Damage: {result2.FinalDamage} | Crit: {result2.IsCrit} | Block: {result2.IsBlocked} | Dodge: {result2.IsDodged}");
             }
         }
         else

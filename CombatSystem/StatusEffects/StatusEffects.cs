@@ -15,8 +15,15 @@ public class StatusEffect
 	{
 	}
 
-	// Wird am Ende jedes eigenen Turns ausgeführt
-	public virtual void OnTurnEnd(Character target)
+    // Allows the status effect to modify incoming damage.
+    public virtual double ModifyIncomingDamage(double damage,DamageType damageType)
+    {
+        return damage;
+    }
+
+
+    // Wird am Ende jedes eigenen Turns ausgeführt
+    public virtual void OnTurnEnd(Character target)
 	{
 	}
 

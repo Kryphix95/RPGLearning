@@ -149,6 +149,11 @@ public class CombatSystem // Combat System class, handles the combat between the
                     }
 
                     List<Character> abilityTargets = GetValidTargets(player, selectedAbility.TargetType, participants);
+                    if (abilityTargets.Count == 0)
+                    {
+                        Console.WriteLine("There are no valid targets for this ability!");
+                        continue;
+                    }
 
                     List<Character> selectedAbilityTargets = ChooseTargets(abilityTargets, selectedAbility.TargetCount);
 

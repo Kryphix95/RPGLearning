@@ -22,8 +22,8 @@ public class Rogue : Character // Rogue class inherits from Character class, wit
         Abilities.Add(new PoisonStrike());
         Abilities.Add(new RendingSlash());
         Abilities.Add(new Rupture());
-        
-        
+
+
         // Maybe a Skilltree where you can choose between 2 Dagger Weapons , each with their own unique abilities and effects
 
         // 2 Daggers = Damage + Bleed + Poison = High chance to apply Bleed and Poison effects on enemies, but lower damage output than 2 Swords + more Crit Chance
