@@ -9,6 +9,7 @@ public abstract class HealOverTimeEffect : StatusEffect
         Duration = duration;
         HealPerTurn = healPerTurn;
     }
+
     public override void OnTurnStart(Character target)
     {
         target.Health += HealPerTurn;

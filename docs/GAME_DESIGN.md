@@ -1,1526 +1,769 @@
-# RPGLearning — Game Design Document
+# PROJECT ASCEND — GAME DESIGN DOCUMENT
 
-**Version:** 0.1  
-**Stand:** 2026-09-10  
-**Status:** Living Design Document  
-**Zweck:** Dieses Dokument hält die aktuell beschlossenen Designregeln, starken Richtungen, offenen Fragen und bewusst geparkten Ideen fest. Es soll verhindern, dass spätere Implementierungsentscheidungen die bereits gewählte Spielidentität verwässern oder widersprechen.
+**Version:** 0.3 · **Stand:** 23.09.2026 · **Status:** Living Design Document  
+**Projektname:** Ascend (Arbeitsname); technisches Repository: `RPGLearning`  
+**Genre / Ziel:** Klassisches, rundenbasiertes 2D-Singleplayer-JRPG mit starker Klassen-, Build-, Party- und Encounter-Identität.  
+**Dokumentzweck:** Vollständige, versionierte **Master-GDD** zur Ablage im GitHub-Repository. Sie hält beschlossene Spielregeln, bereits besprochene Detailkonzepte, aktuelle technische Realität, bewusst archivierte frühere Entwürfe und offene Fragen in getrennten Statuskategorien fest. Das Dokument ist weder ein Versprechen auf vollständige Umsetzung noch eine Liste sofort zu implementierender Features.
+
+> **Spielidentität:** Ein klassisches, rundenbasiertes RPG, dessen Tiefe daraus entsteht, Charaktere zu spezialisierten Werkzeugen zu entwickeln und diese Werkzeuge passend zu Encountern zu kombinieren. Einfache, lesbare Grundregeln; wachsende Tiefe durch ihre Wechselwirkungen.
+
+## 0. Leseschlüssel und Quellenstand
+
+- **FIXED:** bewusst beschlossene Designregel; Änderung nur durch neue bewusste Entscheidung.
+- **DIRECTION:** gewollte Richtung, Ausprägung und Details können sich ändern.
+- **OPEN:** noch nicht entschieden; nicht durch plausibel klingende Annahmen ergänzen.
+- **BACKLOG:** später denkbar, aber explizit kein Auftrag für Combat-v1.
+- **IMPLEMENTED:** im C#-Prototyp vorhanden, nicht automatisch finale Game-Design-Regel.
+- **TO VERIFY:** laut Entwicklungsverlauf eingebaut bzw. geplant, aber noch nicht ausreichend funktional getestet.
+- **EXAMPLE:** veranschaulicht eine Regel und ist weder fertiger Content noch ein verbindlicher Zahlenwert.
+
+**Quellenabgleich:** Ausführliche Original-GDD `docs/GAME_DESIGN.md` v0.1 vom 10.09.2026, konsolidierte Zwischenfassung v0.2 vom 23.09.2026, spätere ausdrücklich besprochene und revidierte Entscheidungen sowie verifizierter C#-Stand auf `main` vom 16.09.2026. Am 17.09. begann lokal der rein kosmetische Cleanup; gemeldete lokale Änderungen sind noch nicht als neuer Remote-Stand verifiziert. Insbesondere **geplant ≠ implementiert** und **kompiliert ≠ vollständig getestet**.
+
+**Zentrale Änderungen gegenüber v0.1:** Cooldown, TargetType/TargetCount, Resistance/DamageType, Damage-Hook, dynamische Speed-Reihenfolge und Status-Timing sind inzwischen implementiert bzw. in Combat-v1 eingefroren. Das bisher offene „vier Base Classes“ ist als Zielmodell **4 Starter → 8 Zwischenklassen → 16 Endklassen** konkretisiert; alte Baumvorschläge sind daher nicht mehr automatisch gültige Pfade. Die derzeit 16 vorgesehenen Endjob-Namen sind erfasst, **ihre exakten Zweige aber nicht festgelegt**. Die direkte DoT-HP-Änderung ist für den derzeitigen Entwurf absichtlich, kein zu beseitigender Zwischenfehler. HoT/Heilung soll die **nominale Stärke** zeigen, nicht nur effektiv fehlende HP. Die Console ist Testadapter und wird vor Unity vom Core getrennt.
 
 ---
 
-## 0. Status-Legende
-
-- **FIXED** — bewusste Designentscheidung; spätere Systeme sollen sich daran orientieren.
-- **STRONG DIRECTION** — sehr wahrscheinliche Richtung; Details dürfen sich noch ändern.
-- **OPEN** — bewusst noch nicht entschieden.
-- **BACKLOG** — gute Idee, aber aktuell kein Implementierungsziel.
-- **EXAMPLE** — Beispiel zur Illustration, nicht automatisch verbindlicher Content.
-
----
-
-# 1. Core Vision & Design Philosophy
+# 1. Vision und Designpfeiler
 
 ## 1.1 Klassenidentität vor Universalität — FIXED
 
-Das Spiel soll vermeiden, dass jeder Charakter am Ende alles kann. Klassen und Spezialisierungen sollen eine echte Identität besitzen.
+Nicht jeder Charakter soll am Ende alles können. Ein Job ist kein austauschbares Zahlenpaket, sondern ein eigener Satz an Werkzeugen, Grenzen und Synergien. Spezialisierung eröffnet gezielt Möglichkeiten **und schließt andere**. Zwischenstufen sollen nicht bloß wertlose Wartezimmer sein. Gemeinsame Skills oder Waffen sind erlaubt, solange Core-Loop, Ausrüstung, Prioritäten und Teamrolle erkennbar verschieden bleiben.
 
-Grundsätze:
-
-- **Class identity over universality.**
-- **Meaningful choices over cosmetic choices.**
-- **System interaction over isolated mechanics.**
-- **Depth through combinations, not unnecessary complexity.**
-- Spezialisierungen sollen Möglichkeiten eröffnen **und** andere Möglichkeiten schließen.
-- Charaktere sollen durch Klasse, Waffen, Fähigkeiten, Ausrüstung, Rollen und Synergien klar voneinander unterscheidbar sein.
-- Eine frühere Klassenstufe soll nicht automatisch nur ein wertloses Wartezimmer für die nächste sein.
+**Designprinzipien:** Klassenidentität vor Universalität; bedeutsame statt kosmetische Entscheidungen; Systeminteraktionen vor isolierten Gimmicks; Tiefe durch Kombination statt unnötige Regelkomplexität. Starke bis bewusst „kaputte“ PvE-Synergien dürfen Spielerwissen belohnen; unbeabsichtigte Endlosschleifen und echte Programmfehler gehören nicht dazu.
 
 ## 1.2 Oldschool + modern — FIXED
 
-Das Spiel soll bewusst Elemente älterer RPGs mit moderner technischer Struktur kombinieren.
+Die Welt darf gefährlich, versteckt, missbar und in Teilen irreversibel sein. Das Spiel respektiert Experimentierfreude und Beobachtung statt permanenter Handhaltung. Gleichzeitig sollen technische Architektur, Bedienbarkeit und Systemkonsistenz modern sein. Der Spieler bekommt Regeln und Werkzeuge, aber nicht automatisch die Lösung jedes Encounters.
 
-Gewünscht sind insbesondere:
+## 1.3 Spielerwissen ist Progression — FIXED
 
-- Konsequenzen statt vollständiger Reversibilität.
-- Discovery statt permanenter Tutorials.
-- Missable Content.
-- versteckte Bedingungen.
-- hohe, aber nachvollziehbare Härte.
-- Respekt vor Spielerbeobachtung und Experimentierfreude.
-- moderne Build-Tiefe und technische Wartbarkeit.
+Gegner, Gebiete und Bosse müssen nicht beim ersten Kontakt vollständig erklärbar sein. Scheitern → Muster erkennen → Hypothese bilden → erneut versuchen → passende Klasse, Ability oder Ausrüstung einsetzen ist gewollter Fortschritt. Regeln müssen intern konsistent und durch Beobachtung lernbar bleiben.
 
-Nicht jede Information muss im Voraus erklärt werden. Ein Spieler darf scheitern, beobachten, lernen und später mit mehr Wissen zurückkommen.
+## 1.4 Entscheidungen und Replayability — FIXED
 
-## 1.3 Entscheidungen müssen Gewicht haben — FIXED
+Eine Wahl darf Auswirkungen auf Klassenwege, Waffen-/Ability-Zugriff, Party und Roster, Quests, World-State und optionale Boss-Kompatibilität haben. Ein Run muss weder alle Fähigkeiten noch alle Gegenstände und versteckten Begegnungen zeigen. Ein theoretisch möglicher 100%-Run ist nicht ausgeschlossen, aber **nicht garantiert**.
 
-Spielerentscheidungen dürfen langfristige oder endgültige Folgen haben.
 
-Das betrifft unter anderem:
+## 1.5 Nicht jeder Run ist eine Checkliste — FIXED
 
-- Klassenwahl.
-- Spezialisierungen.
-- Waffen-/Equipment-Zugriff.
-- Ability-Zugriff.
-- Party-/Roster-Entwicklung.
-- optionale Quests.
-- versteckte Weltzustände.
-- spätere Boss-Kompatibilität.
-- Endgame-Belohnungen.
+Ein einzelner Durchlauf soll nicht automatisch alle Systeme, Nebenquests, seltenen Waffen, Spezialisierungen und Bosse erschließen. Es darf **theoretisch** einen Weg zu sehr hoher oder vollständiger Content-Abdeckung geben, doch das Spiel verspricht weder die Auffindbarkeit noch die praktische Lösbarkeit aller optionalen Begegnungen mit jedem legalen Save. Das verhindert nicht, dass der Hauptstory-Abschluss für jeden legal entwickelten Spielstand erreichbar bleiben muss.
 
-Nicht jede Entscheidung muss frei rückgängig gemacht werden können.
+Die Entscheidung für einen Job, ein seltenes Item oder eine Questlinie ist keine rein kosmetische Variante; sie darf andere Zugänge dauerhaft ausschließen. Ein neuer Durchlauf mit Wissen aus dem vorherigen Run darf deshalb grundlegend andere Möglichkeiten öffnen.
 
-## 1.4 Ein Playthrough muss nicht alles zeigen — FIXED
+## 1.6 Was die Spieler lernen sollen — FIXED PHILOSOPHY
 
-Der Spieler wird **nicht** darauf ausgelegt, in einem Durchlauf automatisch jede Fähigkeit, Quest, Waffe, Spezialisierung oder jeden versteckten Inhalt zu entdecken.
+Der Spieler soll die **Regeln des eigenen Werkzeugs** kennen können, aber nicht schon beim Betreten eines Gebiets die dazugehörige optimale Lösung. Fortschritt entsteht aus Beobachtung, langfristiger Teamplanung, eigener Hypothesenbildung und der Kombination einfacher Regeln. Ein sichtbarer Verlust oder Fehlschlag darf einen Hinweis geben; das Spiel muss daraus kein permanentes Tutorial machen.
 
-Ein zweiter Run darf durch Spielerwissen fundamental anders verlaufen.
-
-## 1.5 Theoretische 100%-Möglichkeit vs. Garantie — FIXED
-
-Es darf theoretisch einen Entwicklungsweg geben, mit dem der komplette Content in einem einzigen Playthrough spielbar ist.
-
-Das Spiel garantiert dies jedoch nicht.
-
-Irreversible Entscheidungen bei:
-
-- Klassen,
-- Spezialisierungen,
-- Partyentwicklung,
-- Roster-Balance,
-- Equipment,
-- versteckten Flags,
-
-können dazu führen, dass einzelne optionale Inhalte auf einem konkreten Save praktisch oder mathematisch nicht mehr lösbar sind.
+Starke Kombinationen, einschließlich sehr leistungsfähiger PvE-Builds, sind ausdrücklich ein möglicher Lohn für Systemverständnis. Davon zu unterscheiden sind unbeabsichtigte unendliche Action-/Ressourcen-Schleifen, technische Exploits und widersprüchliche Regeln; diese gelten nicht automatisch als erwünschtes Balancing.
 
 ---
 
-# 2. Difficulty & Fairness Philosophy
+# 2. Schwierigkeit, Fairness und Welt
 
-## 2.1 Story muss grundsätzlich machbar bleiben — FIXED
+## 2.1 Story-Abschluss vs. optionaler Content — FIXED
 
-Jeder **legal entwickelte** Spielstand muss die Hauptstory grundsätzlich abschließen können.
+Jeder **legal entwickelte Spielstand** soll die Hauptstory grundsätzlich abschließen können, ohne durch eine frühere zulässige Klassen-/Roster-Entscheidung dauerhaft gesoftlockt zu werden. Das bedeutet nicht, dass jede Party jeden Story-Boss angenehm besiegt: Vorbereitung, neues Gear, andere aktive Mitglieder und viele Versuche dürfen notwendig sein.
 
-Das bedeutet ausdrücklich **nicht**, dass jeder Build gleich angenehm durch die Story kommt.
+**Optionale Superbosse** dürfen einzelne finalisierte Builds oder sogar ganze Save-Zustände ausschließen. Anti-Crit-, Element-, Sustain-, Burst-, Status-, Recovery- und Party-Kompositionschecks sind erlaubt. Der Spieler soll nicht alles mit derselben Lieblingsviererparty lösen können müssen.
 
-Eine schlecht zum Boss passende Party darf:
+## 2.2 Härte und Zufall — FIXED
 
-- erheblich mehr Vorbereitung verlangen,
-- andere aktive Charaktere verlangen,
-- Gear-Anpassungen verlangen,
-- Ability-Anpassungen verlangen,
-- deutlich mehr Versuche kosten,
-- im Extremfall stundenlange Progression erzeugen.
+Seltene harte Einzelziel-Treffer, versteckte Trigger, Resistenzwechsel, verzögerte Effekte und Überraschungen sind zulässig. Zufällige, häufige komplette Party-Wipes ohne sinnvolle Gegenmöglichkeit sind nicht Ziel. Auf Party-Ebene soll es im Grundsatz Möglichkeiten zur Reaktion oder Recovery geben.
 
-Die Story darf den Spieler für schlechte Synergien bluten lassen, aber keinen permanenten Softlock erzeugen, der allein aus einer früheren legalen Entscheidung entsteht.
+## 2.3 Welt-Schwierigkeit — DIRECTION
 
-## 2.2 Optionaler Endgame-Content darf Builds ausschließen — FIXED
+Gefährliche Regionen dürfen früh zugänglich sein; die Welt muss sich nicht automatisch ans Level des Spielers anpassen. Erkundung, Rückzug und späteres Zurückkehren sind sinnvolle Entscheidungen. Die Hauptgeschichte beginnt eher geführt und öffnet sich später; konkrete Karte, Regionenzahl und Progressionsgates sind OPEN.
 
-Superbosse und andere optionale Endgame-Begegnungen müssen nicht mit jedem finalisierten Setup lösbar sein.
 
-Ein Boss darf beispielsweise sein:
+## 2.4 Konkrete Grenzen der Fairness — FIXED / DIRECTION
 
-- massiver Physical-DPS-Gegencheck,
-- Element-Check,
-- Sustain-Check,
-- Burst-Window-Check,
-- Anti-Crit-Encounter,
-- Status-/Cleanse-Check,
-- Party-Composition-Check,
-- Mechanik-vor-Damage-Encounter.
+Die Schwierigkeit darf von fehlendem Wissen, unpassender Ausrüstung und bewussten früheren Entscheidungen geprägt sein. Die Welt muss **nicht** auf das aktuelle Level skalieren; ein gefährliches Gebiet kann früh betreten und später mit anderen Werkzeugen wieder besucht werden. Der Spieler soll an Gegnerreaktionen lernen, wann Rückzug oder ein anderer Ansatz sinnvoll sind.
 
-Wenn ein finalisiertes Roster genau die falschen Wege gewählt hat, darf die Antwort lauten:
-
-> Dieser Boss ist mit diesem Save-Zustand nicht mehr realistisch oder mathematisch lösbar.
-
-Das ist bei optionalem Content eine bewusste Designfolge und keine automatische Designpanne.
-
-## 2.3 Schwierigkeit durch Wissen — FIXED
-
-Bosswissen ist Teil der Spielerprogression.
-
-Der Spieler muss nicht beim ersten Kontakt verstehen, warum etwas passiert.
-
-Gewünscht ist ein Lernprozess wie:
-
-1. Scheitern.
-2. Muster erkennen.
-3. Hypothese bilden.
-4. testen.
-5. Regel verstehen.
-6. Lösung anwenden.
-
-Mechaniken sollen konsistent genug sein, um gelernt werden zu können, aber nicht zwingend sofort transparent sein.
-
-## 2.4 Kontrollierte „Asshole“-Mechaniken — FIXED
-
-Das Spiel darf absichtlich fies sein.
-
-Beispiele:
-
-- seltene zufällige Single-Target-One-Shots im späten Endgame,
-- versteckte Trigger,
-- ungewöhnliche Resistenzwechsel,
-- verzögerte Effekte,
-- überraschende Regelbrüche.
-
-Grenze:
-
-- reine Zufallsmechaniken sollen nicht ständig ohne Gegenmöglichkeit die komplette Party löschen.
-- Auf Party-Ebene soll eine Chance auf Recovery bestehen.
+Für die **Hauptstory** besteht eine grundsätzliche Abschließbarkeits-Garantie für jeden legal entwickelten Save; sie ist keine Garantie auf kurze Kämpfe, niedrigen Farmaufwand oder eine bestimmte optimale Party. Für **optionale Superbosse** existiert diese Garantie ausdrücklich nicht. Seltene überraschende Single-Target-One-Shots oder verdeckte Bedingungen sind als Richtung zugelassen; wiederholte zufällige Total-Wipes ohne sinnvolle Party-Recovery sind nicht das Ziel. Konkrete Encounter-Werte bleiben offen.
 
 ---
 
-# 3. Combat Core — Grundregeln
+# 3. Combat: Kernregeln und Ablauf
 
-## 3.1 Kampfstruktur — FIXED
+## 3.1 Format — FIXED / größtenteils IMPLEMENTED
 
-- Turn-based JRPG-orientiertes Kampfsystem.
-- Many-vs-Many.
-- gewünschte aktive Spielerparty: maximal **4**.
-- gewünschte Gegneranzahl: bis zu **6**.
-- Limits sollen eher Encounter-/Party-Regeln sein als hart im Turnloop verankerte Speziallogik.
-- genau **eine Aktion pro Charakter pro Runde**.
-- Aktionen werden sofort beim jeweiligen Charakter ausgeführt; keine globale Action Queue.
-- Tote Charaktere werden übersprungen.
-- Kampf endet sofort, sobald eine Seite keine lebenden Mitglieder mehr besitzt.
+- Rundenbasiert, keine ATB-Leiste, keine globale Warteschlange vorab gewählter Aktionen.
+- Many-vs-Many, eine **reguläre Aktion je berechtigtem Charakter pro Runde**; Sonder-Extra-Turns erst später als ausdrücklich separate Mechanik.
+- Geplante aktive Spielerparty: **4**; mögliche **5** bleibt ungeklärt. Zielrichtung bis ca. **6 Gegner**; keine hart codierte Sonderzahl im Turnloop.
+- Jeder Charakter führt seinen Zug unmittelbar aus. Tote Teilnehmer werden übersprungen. Sobald eine Seite keine lebenden Mitglieder besitzt, endet der Kampf.
+- Spieler steuert neben dem Hauptcharakter auch die Party-NPCs. Gegner wählen ihre eigenen Aktionen/Ziele.
 
-## 3.2 Turn Order — FIXED
+## 3.2 Dynamische Turnorder — FIXED / IMPLEMENTED
 
-- Reihenfolge richtet sich dynamisch nach aktueller **Dexterity/Speed**.
-- Haste/Slow/Dexterity-Änderungen können die noch verbleibende Reihenfolge derselben Runde beeinflussen.
-- Bereits handelnde Charaktere handeln nicht erneut in derselben Runde.
-- Ein Start-of-Round-Snapshot bestimmt, wer grundsätzlich in dieser Runde einen Turn bekommen kann.
-- Neu gespawnte Teilnehmer können sofort existieren und Ziel sein, erhalten ihren ersten eigenen Turn aber erst in der nächsten Runde.
+`Speed` bestimmt die Reihenfolge, **nicht** die Zahl regulärer Züge. Vor jedem nächsten Zug wird unter den noch nicht handelnden berechtigten Charakteren nach aktueller Speed neu sortiert; Haste/Slow können dadurch die **noch ausstehenden** Züge einer laufenden Runde beeinflussen. Bereits Handelnde bekommen dadurch keinen zweiten Zug.
 
-## 3.3 Player Targeting — FIXED
+Zu Rundenbeginn wird eine Teilnehmer-Snapshot-Liste gebildet. Neu hinzugekommene Einheiten können direkt im Kampf existieren bzw. angewählt werden, aber erst ab der nächsten Runde ihren eigenen regulären Zug erhalten. Gleichstände verwenden derzeit die stabile Listenreihenfolge; eine langfristige Tie-Break-Regel ist OPEN.
 
-Normale Spielerangriffe dürfen grundsätzlich jedes lebende Character-Ziel treffen:
+## 3.3 Action-Flow — FIXED / IMPLEMENTED im Console-Prototyp
 
-- Gegner,
-- Verbündete,
-- den eigenen Charakter selbst.
+`aktiver Charakter → Aktion auswählen → erforderliche Ressourcen/Cooldown prüfen → gültige Ziele bestimmen → Ziele wählen → Aktion ausführen → Zug abschließen`.
 
-Das ist absichtliche Oldschool-Flexibilität.
+**Technisch unmögliche Aktionen** (zu wenig Mana, Cooldown nicht bereit, keine gültigen Ziele) werden vor Ausführung abgewiesen und verbrauchen keinen Zug. **Legale, aber taktisch schlechte Aktionen** bleiben erlaubt: Beispielsweise darf Meditation bei vollen Mana gewählt werden. Das Spiel soll den Spieler nicht vor jeder suboptimalen Entscheidung schützen.
 
-Enemy-Normal-Attacks wählen nur lebende Spielercharaktere.
+Im aktuellen `PlayerTurn()` sind Mana-, Cooldown- und Empty-Targets-Checks eingebaut. Eine universelle `ValidateAction`-Architektur ist für Combat-v1 **nicht** vorgesehen. Ungültige Console-Zahlen oder Menüeingaben gehören zum späteren Presentation-/Input-Adapter, nicht zu einer großen neuen Core-Validation-Schicht.
 
-Abilities erhalten später eigene Target-Regeln und TargetCount.
+## 3.4 Targeting: Wen? — FIXED / IMPLEMENTED
 
-## 3.4 Status Timing — FIXED
+**Standard ist `TargetType.Any`:** normale Angriffe, gewöhnliche Abilities und spätere Items dürfen jedes **gültige lebende** Ziel wählen — Feind, Verbündete oder sich selbst — sofern die konkrete Aktion nichts einschränkt. Das unterstützt spätere Zombie-/Heal-Inversionen, absichtliche Friendly-Fire- und ungewöhnliche Buff-Synergien.
 
-- Statusdauer wird am Ende des **eigenen Turns des betroffenen Charakters** reduziert.
-- DoT-Effekte ticken am Ende des betroffenen Turns.
-- Stun verhindert die eigentliche Aktion, aber der Charakter erhält weiterhin seinen Turn.
-- Start-/End-of-Turn-Statuslogik läuft auch bei Stun.
-- Stored Status Effects müssen mindestens 1 Turn Dauer besitzen.
-- reine One-Shot-Effekte mit 0 Turn Dauer müssen nicht als persistenter Status gespeichert werden.
+| TargetType | Regel |
+|---|---|
+| `Any` | alle lebenden Teilnehmer beider Seiten einschließlich Self |
+| `Self` | nur der Anwender |
+| `Ally` | eigene Seite einschließlich Self, lebend |
+| `Enemy` | gegnerische Seite, lebend |
+| `DeadAlly` | tote Mitglieder der eigenen Seite; für spätere Wiederbelebung |
 
-## 3.5 Status Reapplication — FIXED
+Derzeit unterscheidet der Code genau **zwei Seiten** anhand `Enemy` vs. Nicht-`Enemy`. Factions/Teams für komplexere Szenarien sind spätere Erweiterung, kein Combat-v1-Blocker. Enemy-Normal-Attacks wählen aktuell lebende Spielercharaktere; erweiterte Enemy-AI/Targets sind BACKLOG.
 
-Exakt derselbe konkrete Status-Typ stackt nicht mehrfach.
+## 3.5 TargetCount: Wie viele? — FIXED / IMPLEMENTED
 
-Bei erneutem Anwenden:
+`TargetType` legt **wer** gültig ist fest; `TargetCount` legt **wie viele** dieser gültigen Ziele eine Aktion auswählt. `1` = ein Ziel; `2`, `3`, … = bis zu so viele **verschiedene** gültige Ziele (gedeckelt durch deren Anzahl); `0` = **alle** gültigen Ziele. Kein Spezialwert wie `6 = alle`. Eine Liste von Zielen wird an `Ability.Execute(Character user, List<Character> targets)` (hier als schematische Signatur; im aktuellen C#-Code sind Parameternamen noch teilweise großgeschrieben) übergeben. Einzelzielskills dürfen intern `targets[0]` verwenden, wenn die zentrale Auswahl die Nicht-Leer-Bedingung sichert.
 
-- Dauer wird auf `max(existing, new)` aktualisiert.
-- Dauer wird niemals verkürzt.
-- `OnApply` wird nicht erneut ausgelöst.
+Mehrfachauswahl (`TargetCount > 1`) wurde mit einer temporären Test-AOE erfolgreich ausprobiert; dieser Testskill wurde anschließend gelöscht. Der `0`-Fall folgt dem implementierten Codepfad, wurde aber noch nicht separat mit einem echten All-Target-Skill funktional getestet. Aktuell verwenden normale Angriffe weiter genau ein Ziel.
 
-Unterschiedliche konkrete Status-Typen können parallel existieren.
+## 3.6 Status: Lebenszyklus und Zeit — FIXED / IMPLEMENTED
 
-Beispiel:
+`Duration = N` bedeutet **N zukünftige eigene Züge des betroffenen Charakters**; der eigene Zug, in dem ein neuer Effekt erzeugt wird, zählt nicht sofort mit. Zu Beginn eines Zugs wird die Liste der **bereits zu Zugbeginn aktiven Effekte** gespeichert. Start-of-Turn-Logik wird aufgerufen; am Ende des Zugs werden nur die zu Zugbeginn vorhandenen Effekte verarbeitet und heruntergezählt. Ein Stun verhindert die eigentliche Aktion, aber nicht Start-/End-of-Turn-Effekte, Cooldown-Ablauf oder den Verbrauch dieses regulären Zugs.
 
-- WeakPoison + HeavyPoison: möglich.
-- Poison + Poison desselben Typs: Refresh statt Stack.
+Gleicher **konkreter Effekttyp** stackt nicht mehrfach: erneutes Anwenden setzt `Duration = max(alte Dauer, neue Dauer)`; es triggert `OnApply` nicht erneut. Unterschiedliche konkrete Typen dürfen parallel bestehen. Für persistente Status-Effekte ist eine sinnvolle positive Dauer vorzusehen; One-Shot-Effekte brauchen keinen gespeicherten `Duration = 0`-Status.
 
-## 3.6 Status Application — FIXED
+**On-hit-Regel:** relevante Hits/Bedingungen müssen erfolgreich sein, bevor OnHit/OnCrit-Effekte angewendet werden. Dodge verhindert diese Folgeeffekte, Block zählt weiterhin als Treffer.
 
-Status wird nur angewandt, wenn der relevante Hit bzw. die relevante Bedingung erfolgreich war.
+**Aktuelle Effekte:** Stun, Slow, Haste, IronGuard, Poison/Bleed als DoT, Regeneration als HoT. Die Snapshot-Semantik ist eingebaut; komplexe Reapply-/Remove-Kantenfälle gehören in den finalen Regressionstest.
 
-Ein Dodge verhindert OnHit-/OnCrit-artige Folgeeffekte.
+## 3.7 Cooldowns — FIXED / IMPLEMENTED
 
-Block zählt weiterhin als erfolgreicher Hit.
+Cooldowns werden **zu Beginn des eigenen Zugs** heruntergezählt. `Cooldown = 2` bedeutet: die **nächsten zwei eigenen Züge** kann die Fähigkeit nicht erneut benutzt werden, am dritten ist sie wieder verfügbar. Deshalb setzt `StartCooldown()` aktuell `RemainingCooldown = Cooldown + 1`. Dieses `+1` ist weiterhin nötig und **unabhängig** vom gestern korrigierten Status-Dauer-Snapshot.
 
-## 3.7 Crit / Dodge / Block — FIXED
+## 3.8 Damage-Pipeline — FIXED / IMPLEMENTED
 
-- Crit + Hit = Crit.
-- Crit + Block = Crit + Block.
-- Crit-Roll + Dodge = kein gültiger Crit; `IsCrit` wird nicht als erfolgreicher Crit gewertet.
-- Crit soll langfristig grundsätzlich für alle Schadensarten möglich sein.
-- Dodge soll grundsätzlich möglich sein, sofern eine Ability es nicht explizit überschreibt.
-- Blockierbarkeit einzelner magischer/elementarer Angriffe bleibt designabhängig.
+`NormalAttack()` bzw. `MagicAttack()` liefert einen `DamageResult` mit DamageType/RawDamage/Crit-Information. `Character.DamageTaken()` verarbeitet für direkte Treffer sinngemäß:
 
-## 3.8 Cooldowns — STRONG DIRECTION / NEXT IMPLEMENTATION
+1. Dodge-Prüfung: bei Dodge 0 Schaden und kein erfolgreicher Crit.
+2. Block-Prüfung: aktuell halber eingehender Schaden; bei erfolgreichem Hit können Crit und Block koexistieren.
+3. Defense/Armor-Reduktion **nur bei Physical**.
+4. Jeder aktive StatusEffect darf über `ModifyIncomingDamage(damage, damageType)` den Schaden verändern. Standardmäßig unverändert; `IronGuardEffect` multipliziert **Physical mit 0,7**.
+5. DamageType-spezifische Resistance/Weakness anwenden; am Ende runden, nichtnegativ begrenzen und HP aktualisieren.
 
-Ein funktionales Cooldown-System ist der nächste größere Combat-Schritt.
+**DamageTypes derzeit:** Physical, Fire, Ice, Lightning, Holy, Dark. Der Wert `MagicalDamage` ist eine Offensivskalierung, kein finales Element. Separater physischer und magischer Crit sind implementiert. Aktuell können auch magische Hits geblockt werden; ob das auf Dauer so bleiben soll, ist **OPEN**.
 
-Voraussichtliche Struktur:
+**Resistances:** fehlender Eintrag = 0 %; +50 % = halber Schaden, +100 % = immun; −50 % = 150 % Schaden, −100 % = 200 %; Werte werden momentan auf −100…+100 begrenzt. Genaue Balance ist noch nicht final.
 
-- Ability besitzt Basis-Cooldown.
-- Ability besitzt RemainingCooldown.
-- Cooldown zählt auf den eigenen Turns des Besitzers herunter.
-- genaue Off-by-One-Semantik muss vor Implementierung festgelegt werden.
-- Mana, Cooldown und Target-Validität sollen später vor Ausführung geprüft werden.
-- ungültige Aktionen sollen langfristig **keinen Turn verbrauchen**.
+**Bewusste Ausnahme:** Die aktuellen Poison-/Bleed-DoTs ziehen direkt HP ab und durchlaufen nicht automatisch Dodge, Block, Defense oder Resistance. Das ist **derzeit beabsichtigte Semantik**, keine automatisch zu behebende Architektur-Schuld. Falls später DoT-Resistances, Immunität oder neue Schutzregeln gewollt sind, wird das als eigene Designentscheidung festgelegt.
 
----
+**TO VERIFY:** Der generalized IronGuard-Hook ist eingebaut und der Buff kann einem anderen Target verliehen werden; ein isolierter numerischer Test (Physical −30 % nach sonstiger Mitigation, Magic unverändert) ist noch offen. Der vorherige direkte `IronGuardEffect`-Sonderfall in `DamageTaken()` wurde entfernt.
 
-# 4. Damage, Elements & Resistances
+## 3.9 Heilungsanzeige — FIXED
 
-## 4.1 MagicalDamage ist Skalierungswert, kein finaler Damage Type — FIXED
+Heilung und HoT sollen **die berechnete Stärke der Heilung** anzeigen, auch wenn dem Ziel weniger HP fehlen; HP selbst bleibt bei `MaxHealth` gedeckelt. Beispiel: 98/100 HP, Heal-Stärke 8 → Anzeige `heals 8`, tatsächlicher Endstand 100/100. Das ist eine bewusste Informationsregel und **kein** HoT-Reporting-Bug. Die UI sollte nominale Heilung und verbleibende HP nicht verwechseln. **Codeabweichung:** Im letzten verifizierten `MinorHeal.Execute()` wird noch `actualHeal` ausgegeben; die nominale Anzeige ist dort noch nicht umgesetzt (siehe § 13.5).
 
-`MagicalDamage` dient als Hintergrund-Offensivwert, nicht als sichtbare finale Schadenskategorie.
 
-Magische Abilities sollen konkrete Elemente verursachen, z. B.:
+## 3.10 Weitere verbindliche Combat-Semantik — FIXED / OPEN
 
-- Fire,
-- Ice,
-- Lightning,
-- Holy,
-- Dark.
+**Treffer und Folgeeffekte:** Ein Dodge negiert den Treffer und entsprechend dessen OnHit-/OnCrit-Folgeeffekte. Block halbiert im aktuellen Prototyp den direkten Schaden, zählt aber als erfolgreicher Treffer. Ein Crit-Roll vor einem Dodge darf nach Dodge nicht als erfolgreicher Crit ausgegeben werden. Ob spezielle zukünftige Skills Dodge, Block oder andere Schritte bewusst umgehen, muss die konkrete Fähigkeit festlegen.
 
-Weitere Elemente bleiben offen.
+**Tempo und Aktionshäufigkeit:** Die reguläre Speed-Regel betrifft allein die Reihenfolge der noch ausstehenden Züge. Haste/Slow, eine höhere Speed-Stat oder ein Gleichstand geben nicht stillschweigend zusätzliche reguläre Züge. Extra-Turns können ein späteres spezielles Mechanikpaket werden; ihre Wechselwirkung mit Cooldowns und Status-Dauer ist **OPEN**.
 
-## 4.2 Element-Identitäten — FIXED CONCEPTUAL DIRECTION
+**Runden-Snapshot und Spawns:** Teilnehmer, die während einer Runde hinzukommen, dürfen sofort Ziele werden, aber erhalten ihren ersten regulären Zug erst in der Folgerunde. Bereits tote Einheiten werden bei der Auswahl des nächsten Handelnden übersprungen. Der Kampf endet, wenn keine lebenden Einheiten einer Seite mehr existieren. Ein kommendes Team-/Faction-System oder frei steuerbare beschworene Einheiten darf diese aktuelle Zwei-Seiten-Regel nicht rückwirkend als bereits implementiert darstellen.
 
-Elemente sollen sich mechanisch unterscheiden und nicht nur farbige Kopien sein.
+**Status-Refresh:** Gleicher konkreter C#-Statustyp wird verlängert statt doppelt gestackt; `OnApply` wird bei diesem Refresh derzeit nicht erneut ausgeführt. Die aktuelle Regel `max(alte, neue Dauer)` gilt unabhängig davon, ob die neu angebotene Dauer kleiner ist. Unabhängige Status-Untertypen wie hypothetisches WeakPoison und HeavyPoison könnten gleichzeitig bestehen, sofern sie später tatsächlich als unterschiedliche Typen modelliert werden.
 
-Beispiele:
+**Dauer:** N zukünftige eigene Züge ab erfolgreicher Neuanwendung. Der Snapshot hält neu erzeugte Effekte von einem ungewollten sofortigen Ablauf am Ende des laufenden Zugs ab. In besonderen Fällen (Refresh eines bereits im Snapshot enthaltenen Effekts, Entfernung während Start-of-Turn, Target stirbt durch einen Tick) wird das tatsächliche Verhalten im Regressionstest geprüft, statt eine neue Regel allein aus dem Kommentar abzuleiten.
 
-- **Fire:** hoher Schaden, Burn/DoT, weniger Kontrolle, eventuell längere Cooldowns.
-- **Ice:** geringere Multiplikatoren, Slow/Freeze/Control.
-- **Lightning:** mittlerer Schaden, Stun/Tempo/Multi-Hit-Möglichkeiten.
-- **Holy:** niedrigere reine Damage-Leistung, Healing/Support, eigene Resistance.
-- **Dark:** zwischen Fire/Lightning, Drain/Debuffs/Sonderinteraktionen.
+**Aktion und Validität:** `ManaCost`, `RemainingCooldown`, `TargetType` und `TargetCount` sind Core-Regeln. Ausgewählte Ziele müssen zur angefragten Aktion passen; die aktuelle synchrone Console-Auswahl liefert sie direkt aus `GetValidTargets`. Für die spätere zeitversetzte Unity-Auswahl ist vor dem tatsächlichen Ausführen erneut zu entscheiden, wie veraltete oder inzwischen tote Ziele behandelt werden. Das ist eine **Integrationsentscheidung**, kein Auftrag für einen umfangreichen `ValidateAction`-Framework-Bau vor Unity.
 
-Die exakten Zahlen sind offen.
-
-## 4.3 Zentraler Damage Pipeline — FIXED TECHNICAL DIRECTION
-
-Defense-/Resistance-/Mitigation-Formeln sollen zentralisiert sein.
-
-Späteres Ziel:
-
-- DamageResult kennt genug Kontext über konkreten Schaden/Element.
-- Resistances werden zentral angewandt.
-- Balancing-Änderungen sollen nicht das manuelle Editieren dutzender Abilities erfordern.
-
-Aktuelle DoTs dürfen vorübergehend direkt HP reduzieren; langfristig soll die Damage Pipeline diese Interaktionen sauber abbilden können.
+**Items und Flee:** Die Menüeinträge existieren gegenwärtig nur als Console-Platzhalter. Es gibt noch keine verbindliche Item-/Fluchtmechanik im aktuellen Combat-Prototyp. Wiederbelebung mit `DeadAlly` ist Targeting-Vorbereitung, **kein** Beleg für einen vorhandenen Revive-Skill.
 
 ---
 
-# 5. Party & Roster
+# 4. Elemente und Wechselwirkungen
 
-## 5.1 Main Character ist normalerweise Pflichtmitglied — FIXED
+**DIRECTION:** Elemente müssen später mehr sein als verschieden gefärbter Schaden: Fire eher Damage/Burn; Ice eher Slow/Freeze/Control; Lightning Tempo/Stun/Multi-Hit; Holy Support/Heilung; Dark Drain/Debuffs/ungewöhnliche Interaktionen. Die genauen Multiplikatoren und Statuschancen sind OPEN und nicht aus diesen Archetypen abzuleiten.
 
-Der Spielercharakter muss grundsätzlich Teil der aktiven Party sein.
+**FIXED:** Der technische Schadenstyp und Resistances sind zentral, nicht in jeden Skill kopiert. Eine spätere Zombie-/Trickster-Inversion kann Heilung/Schaden, Elemente oder Zielprioritäten verändern, muss nach Definition aber intern konsistent sein. Die besondere freie `Any`-Zielauswahl wird dafür bewusst beibehalten.
 
-Ausnahmen sind explizite Story-/Gameplay-Sequenzen.
 
-Dadurch hat die Main-Class-Wahl direkte Auswirkungen auf die spätere Party-Komposition.
+## 4.1 Element-Profile als Designrichtung — DIRECTION, keine finalen Formeln
 
-## 5.2 Party-NPCs werden vom Spieler kontrolliert — FIXED
+| Typ / Familie | Angestrebtes Profil | Noch offen |
+|---|---|---|
+| `Physical` | Direkte Weapon-/Strength-Interaktion; physische Mitigation und waffenspezifische Skills | Armor-/Defense-Balance, Sondertreffer, zusätzliche Physik-Effekte |
+| `Fire` | Eher starker Schaden, Burn oder anderer DoT; tendenziell weniger Kontrolle | Ob jede Fire-Ability einen DoT erhält, Chancen und Koeffizienten |
+| `Ice` | Eher Slow, Freeze oder andere Control-Tools | Freeze-Logik, genaue Multiplikatoren und Immunitäten |
+| `Lightning` | Tempo, Stun, mögliche Mehrfachtreffer | Echte Extra-Turn-Interaktion und Statuschancen |
+| `Holy` | Heilung, Schutz, Support und thematisch passende offensive Skills | Ob und wie offensive Holy-Builds skaliert werden |
+| `Dark` | Drain, Debuffs, riskante Ressourcen- oder Inversionsinteraktionen | Exakte Kosten, Elemente-Antworten und Synergien |
 
-Storyrolle und Combat-Kontrolle sind getrennt.
+Diese Tabelle fixiert **keine** automatischen Nebeneffekte für alle Angriffe eines Typs. Ein Fire-Skill kann schlicht Fire-Damage verursachen, ohne dass das gesamte Element-System bereits fertig ist. Neue Elemente und konkrete Schadensformeln sind OPEN.
 
-Companions besitzen eigene Persönlichkeit und Vergangenheit, werden im Kampf aber vom Spieler gesteuert.
+## 4.2 Resistance- und Damage-Informationsregel — FIXED
 
-## 5.3 Unterschiedliche Progressionsfreiheit bei Companions — FIXED
+`MagicalDamage` ist ein Offensivwert; die elementare **Art** eines Treffers wird über `DamageType` getragen. Fehlende Resistance bedeutet im aktuellen Combat `0`. Positive Resistance vermindert eingehenden Schaden, negative bedeutet Weakness und erhöht ihn. Die zentrale direkte-Treffer-Pipeline ist die Referenz für weitere Damage-Typen, soweit ihre Regel explizit dorthin gehören soll.
 
-Es existieren mehrere Companion-Typen:
+DoTs sind die **bewusste, dokumentierte Ausnahme**: Poison und Bleed benutzen gegenwärtig direkten HP-Abzug. Künftige Schadensquellen dürfen weder stillschweigend als DoT noch als normaler direkter Treffer kategorisiert werden, ohne ihren beabsichtigten Regelweg zu definieren.
 
-### A) Starter-/Core-Charaktere
+---
+# 5. Party, Roster und Companions
 
-- besitzen den vollständigen Entwicklungsweg.
-- Spieler entscheidet ihre Spezialisierungen.
-- Spieler kann gegebenenfalls bewusst auf einer früheren Klassenstufe bleiben.
-- höchste Build-Freiheit.
+## 5.1 Aktive Party und Hauptfigur — FIXED / DIRECTION
 
-### B) wenige ausgewählte Story-Charaktere
+Die Hauptfigur gehört im Normalfall in die aktive Party; ausdrücklich inszenierte Story-/Gameplay-Ausnahmen sind möglich. Die Zielgröße beträgt **vier aktive Charaktere**; eine Variante mit fünf wurde erwogen, aber nicht beschlossen. Ein langfristiges **Roster von ungefähr acht Charakteren** ist als Größenordnung im Gespräch, die endgültige Rostergröße ist OPEN. Alle aktiven Party-Mitglieder werden im Kampf vom Spieler gesteuert, unabhängig von ihrer Persönlichkeit in der Story.
 
-- besitzen teilweise oder vollständig festgelegte Entwicklungswege.
-- frühere Entscheidungen sind Teil ihrer Geschichte.
-- Spieler kann diese Vergangenheit nicht rückgängig machen.
-- weitere Feinabstimmung kann trotzdem offen sein.
+Die Party soll nicht nur vier allmächtige Favoriten sein, sondern ein Satz spezialisierter Werkzeuge. Ein sonst selten eingesetzter Charakter darf bei einem bestimmten Boss plötzlich zentral werden. Healing, Frontline, Physical/Magic, Elementabdeckung, Burst, Sustain, Kontrolle, Statusantworten und Resistances bilden unterschiedliche Vorbereitungsmöglichkeiten.
 
-### C) spätere reguläre Recruits
+## 5.2 Verschiedene Companion-Freiheiten — FIXED
 
-- steigen auf einer bereits fortgeschrittenen/mittleren Klassenstufe ein.
-- ihre Vergangenheit bis zu diesem Punkt ist fest.
-- verbleibende Endpfade bzw. spätere Spezialisierungen kann der Spieler wählen.
+- **Starter-/Core-Charaktere:** vollständiger Entwicklungsweg und weitreichende Spielerentscheidung über spätere Spezialisierungen.
+- **Ausgewählte Story-Companions:** einzelne oder alle früheren Entwicklungsentscheidungen sind Teil ihrer Vorgeschichte und bleiben fest; weitere Feinabstimmung kann möglich sein.
+- **Spätere Recruits:** können bereits mit einer Zwischenklasse ins Roster kommen. Ihr bisheriger Pfad steht fest, ihre verbleibende Spezialisierung kann teilweise vom Spieler bestimmt werden.
 
-Prinzip:
+Merksatz: *Die Vergangenheit eines Companions ist fest; seine Zukunft kann teilweise vom Spieler geformt werden.* Ob die Klasse einzelner Companions abhängig von der Main-Class variiert, bleibt OPEN. Es darf auch companion-exklusive Special Classes geben.
 
-> Companion past = fixed; companion future = partly player-shaped.
 
-## 5.4 Roster statt nur „beste Viererparty“ — FIXED
+## 5.3 Roster als langfristiger Encounter-Werkzeugkasten — FIXED
 
-Der Spieler soll langfristig nicht nur vier Lieblingscharaktere optimieren, sondern ein funktionierendes **Roster** entwickeln können.
+Ein Companionsystem ist nicht nur ein Sammelbildschirm für die vier stärksten Figuren. Mit einem breiteren Roster soll der Spieler bewusst zwischen Healing, defensiver Stabilität, Physical Damage, Element-/Magic-Abdeckung, Burst, Sustain, Kontrolle, Cleanse/Status-Antworten und anderen Utility-Werkzeugen planen können. Eine Figur, die auf vielen normalen Maps kaum eingesetzt wird, darf für einen optionalen Encounter einen entscheidenden Beitrag leisten.
 
-Strategische Fragen sollen sein:
+Die Hauptfigur nimmt normalerweise einen der aktiven Plätze ein und beeinflusst damit die übrige Partyplanung. Ausgewählte Storysequenzen dürfen davon ausdrücklich abweichen. Storypersönlichkeit und Combat-Steuerung sind voneinander getrennt: Begleiter bleiben erzählerisch eigenständige Figuren, der Spieler steuert im Kampf ihre normalen Aktionen.
 
-- Habe ich genug Healing?
-- Habe ich Tankiness?
-- Habe ich Physical Damage?
-- Habe ich Elemental/Magic Damage?
-- Habe ich Burst?
-- Habe ich Sustain?
-- Habe ich Utility?
-- Habe ich unterschiedliche Resistenz-/Status-Antworten?
+## 5.4 Companions: vergangene und zukünftige Entscheidungen — FIXED / OPEN
 
-Ein Charakter darf 80 % der Zeit auf der Bank sitzen und für einen bestimmten Boss plötzlich essenziell werden.
+Vollständig formbare Starter-/Core-Companions können ihren Jobpfad in erheblichem Umfang selbst wählen. Einige storyrelevante Gefährten bringen dagegen einen festeren Pfad aus ihrer Vergangenheit mit. Später hinzukommende reguläre Recruits können schon eine Zwischenklasse besitzen, bei der der Spieler nur über die noch offenen späteren Entwicklungen verfügt.
 
-## 5.5 Main-Class kann Companion-Klasse beeinflussen — OPEN
-
-Mögliche Idee:
-
-Bestimmte Companions könnten abhängig von der gewählten Main-Class mit anderer Klasse oder anderem Entwicklungsweg auftreten, obwohl Story und Dialoge weitgehend gleich bleiben.
-
-Ziel wäre Roster-Varianz und geringere Doppelung.
-
-Nicht für alle NPCs geeignet; einige Klassen sollen Teil ihrer festen Identität bleiben.
+**Offen** ist, ob der gewählte Hauptcharakter-Job bei einzelnen Companions die Auftretensklasse beeinflusst, ob alle Rekrutierungen in jedem Run möglich sind und welche Figuren gegebenenfalls exklusive Sonderklassen besitzen. Keine dieser Optionen darf als bereits beschlossener vollständiger Companion-Plan ausgegeben werden.
 
 ---
 
-# 6. Class Progression
+# 6. Jobs und Klassenentwicklung
 
-## 6.1 Limited Base Classes — FIXED DIRECTION
+## 6.1 Neues Zielgerüst — DIRECTION, noch nicht implementiert
 
-Der Main Character soll nur aus einem begrenzten Satz von Starter-/Base Classes wählen können.
+**4 Starterklassen → jede mit 2 Zwischenklassen → jede Zwischenklasse mit 2 Endklassen = 16 Endjobs.** Das ist das aktuelle Planungsmodell und ersetzt die frühere GDD-Aussage, Anzahl der Base Classes und der vierte Knight-Pfad seien noch völlig offen. **Die genauen Verbindungen zwischen den einzelnen Namen sind weiterhin OPEN**; die folgende Tabelle ist eine Sammlung von vorgesehenen Endjobs nach Rollenfamilie, **kein verbindlicher Skilltree**.
 
-Nicht jede im Spiel existierende Klasse muss für den Main verfügbar sein.
+| Rollenfamilie | Aktuell vorgesehene Endjob-Namen |
+|---|---|
+| Physical / Martial | Assassin, Ranger, Samurai, Monk |
+| Tank / Knight | Paladin, Templar, Gladiator, Dark Knight |
+| Healing / Support | Priest, Reaper, Cleric, Chanter |
+| Magic / Hybrid | Sorcerer, Summoner, Battle Mage, Ghostblade |
 
-Companion-exclusive Special Classes sind ausdrücklich erwünscht.
+Die vier C#-Testklassen **Warrior, Rogue, Cleric und Mage** sind derzeitige Combat-Prototypen. Ihre Dateinamen und vier Testskills sind **nicht** automatisch die endgültigen Namen, exakten Starterrollen oder Levelpfade des späteren Spiels. Insbesondere kann `Cleric` aktuell Test-Basisklasse und später zugleich Name eines geplanten Endjobs sein; das muss vor der finalen Klassenimplementierung sauber entschieden werden.
 
-Exakte Anzahl und Namen der Base Classes: **OPEN**.
+## 6.2 Endjob-Identitäten — DIRECTION mit offenen Details
 
-## 6.2 Reverse Engineering der Klassen — STRONG DIRECTION
+**Physical:** Assassin steht für spezialisierten Single-Target-Burst, Crit, Bleed/Poison, Multi-Hit und potenzielle Tempo-/Execute-Synergien; Ranger für die eigene fernkampforientierte Rolle; Samurai für einen klaren waffen- und timingzentrierten Kampfpfad; Monk für eine eigenständige Nahkampfidentität, deren genauer Loop noch nicht feststeht. Frühere **Ninja**-Überlegungen sind nicht automatisch ein zusätzlicher 17. Endjob und werden nur bei bewusster späterer Neuentscheidung wieder aufgenommen.
 
-Klassen sollen bevorzugt von ihrer gewünschten Endgame-Identität rückwärts konstruiert werden.
+**Tank:** Paladin ist ein stabiler Holy-/Physical-orientierter Tank; Templar eine offensivere, standfeste Knight-Variante mit Greatsword-/Holy-Richtung; Dark Knight verbindet Physical/Dark mit riskanter HP-Nutzung als möglichem Ressourcen-/Defensive-Loop. Gladiator ersetzt die alte offene vierte Knight-Namenslücke; seine konkrete mechanische Identität ist noch OPEN.
 
-Reihenfolge:
+**Healing/Support:** Priest ist stärkerer klassischer Caster-/Healer; Cleric der defensive Healer mit Schutz/Sustain und nach bisheriger Konzeptidee One-Hand + Shield statt Staff; Chanter ein offensiver Support-/Buff-Hybrid mit Combat-Staff-Richtung. **Reaper** ist der jüngere Name für einen eigenen vierten Pfad; exakte Spielweise und Abgrenzung zu Holy/Dark-Hybriden sind OPEN. Die vier Jobs dürfen sich einige Basis-Heals teilen, sollen aber durch exklusive Werkzeuge verschieden bleiben.
 
-1. Wie soll sich die Endklasse spielen?
-2. Welche Waffen verkörpern das?
-3. Welche Rüstung/Stats passen dazu?
-4. Welche Fähigkeiten braucht sie?
-5. Was muss sie dafür aufgeben?
-6. Welche gemeinsame Vorstufe ergibt daraus Sinn?
+**Magic/Hybrid:** Sorcerer steht als Richtung für spezialisierte offensive Magie; Summoner für einen eigenständigen Beschwörungs-Loop, dessen Turn-/Summon-Regeln noch nicht definiert sind. Battle Mage kombiniert physische und elementare Anteile, eventuell Combat Staff/Chain-ähnliche Rüstung. Ghostblade ist ein magisch-physischer Schwert-/Mystic-Knight-artiger Pfad; genaue Elementbindung und Waffenregeln sind OPEN. Kein neuer Summon- oder Ghostblade-Fundamentalmechanismus wird vor Unity begonnen.
 
-Dies soll verhindern, dass Zwischenklassen nur künstliche Füllknoten werden.
+Diese Beschreibungen sind **Arbeitsprofile**, keine zugesagten Ability-Listen, festen Waffenrestriktionen oder Balancewerte. Frühere Ideen für Berserker, Ninja, Hunter/Beastmaster/Tamer und Fencer/Parry bleiben bei Bedarf im **separaten Backlog**, nicht heimlich im neuen 16er-Baum.
 
-## 6.3 Mehrstufige Spezialisierung — STRONG DIRECTION
+## 6.3 Was Spezialisierung bedeutet — FIXED
 
-Grundidee:
+Eine Klassenwahl verändert nicht bloß Stats. Sie kann neue Waffen/Rüstungen, Abilities, Ressourcen und Synergien freigeben und ältere Optionen entziehen. Je weiter der Pfad, desto schärfer darf die Identität und desto enger der Werkzeugkasten werden. Verwandte Endjobs dürfen gemeinsame Skills behalten, ohne dieselbe Spielweise zu besitzen.
 
-- Base Class.
-- erste große Entwicklung/Mittelklasse.
-- spätere Endklasse/zweite Spezialisierung.
+**DIRECTION:** Beim Entwurf rückwärts vorgehen: Endjob-Kampffantasie → Waffen/Rüstung → Ressourcen/Abilities → bewusste Kosten → passende Zwischen- und Starterklasse. Die früher diskutierten Levelmarken um **35** und **70** sind Beispiele, keine aktuellen Fixwerte. Ein bewusster Verbleib auf einer früheren Klassenstufe darf einen eigenen langfristigen Weg darstellen; wie dieser mit dem neuen 16-Endjob-Modell und dem Content-Budget zusammenpasst, ist noch auszuarbeiten.
 
-Möglicherweise zwei echte Spezialisierungspunkte pro vollständig frei entwickelbarem Charakter.
+## 6.4 Talente, Ability-Freischaltung und Respec — FIXED / DIRECTION / OPEN
 
-Grobe mögliche Levelmarken:
+**FIXED:** Der Combat-Core muss nur wissen, welche Abilities ein Charakter **besitzt/ausgerüstet hat**; woher sie stammen, ist Verantwortung von Progression/Content. Freischaltungen können aus Leveln, Quests, Trainern, Scrolls, Drops, Exploration, Mastery, Spezialisierung und versteckten Bedingungen kommen. Nicht jede Ability ist jedem Charakter zugänglich.
 
-- erster großer Pfad ungefähr Level 35.
-- zweiter ungefähr Level 70.
+**DIRECTION:** Talentpunkte sind **knapp und bedeutsam**, nicht beliebig überall verteilbar. Ein Talent-/Ability-Netz kann Knoten, Cluster, versteckte Voraussetzungen und Job-Gates enthalten. Nicht mehr verfügbare Punkte aus durch Spezialisierung ausgeschlossenen Abilities sollen zurückerstattet werden. Es ist attraktiv, **mehr Skills zu lernen, als gleichzeitig ausgerüstet werden können**; etwa **sechs aktive Ability-Slots** wurden als Zielgröße diskutiert, aber nicht abschließend bestätigt.
 
-Exakte Level: **OPEN**.
+**DIRECTION:** Während der Story ungefähr **ein bis zwei begrenzte Respec-Möglichkeiten**, spät bzw. im Postgame ein freier vollständiger Respec. Zeitpunkt, Kosten, Auswirkungen auf irreversible Story-Flags und Verfügbarkeit für Companions sind OPEN; Storyentscheidungen werden dadurch nicht automatisch rückgängig gemacht.
 
-## 6.4 Spezialisierung muss echte Wahl sein — FIXED
+**OPEN:** Exakte Punktvergabe, konkrete Talentbaum-Topologie, Talent Tree vs. Ability Constellation, Use-to-Level-Mastery (Spam-Exploit vermeiden), Endstufen-/Mastery-Pfade und Reihenfolge der Klassen-Upgrades.
 
-Eine Spezialisierung darf nicht einfach „+10 % besser“ bedeuten.
 
-Sie darf:
+## 6.5 Endjobs: erhaltene Detailprofile — DIRECTION / OPEN
 
-- neue Waffen öffnen,
-- alte Waffen schließen,
-- Ability-Zugriff verändern,
-- Rüstungskategorien verändern,
-- Ressourcen verändern,
-- Core-Loops verändern,
-- Equipment-Pools verändern,
-- neue Synergien erzeugen,
-- bestehende Flexibilität reduzieren.
+Die folgende Tabelle bewahrt die bisherige Rollenrichtung **ohne einen nicht beschlossenen Klassenbaum zu erfinden**. Jedes Profil ist eine Designskizze; fehlende Waffen, Ressourcen, Skills, Aufstiegslevel und direkte Vorgänger sind weiterhin OPEN.
 
-## 6.5 Auf früherer Stufe bleiben kann Endgame-Pfad sein — FIXED
+| Vorgesehener Endjob | Gesicherte / besprochene Richtung | Nicht entschieden |
+|---|---|---|
+| **Assassin** | stark spezialisierter Dagger-/Single-Target-Burst; Crit, Poison/Bleed, Multi-Hit, Execution; besondere Tempo-/Extra-Turn-Synergien denkbar | genaue Ressourcen, Bedingungen, Waffenanzahl und Stärke |
+| **Ranger** | eigenständige fernkampforientierte Physical-Rolle; soll nicht nur ein Assassin aus Distanz sein | Waffenpool, Munition/Markierung, AoE-/Single-Target-Verhältnis |
+| **Samurai** | eigenständige, waffen- und Timing-bezogene Martial-Rolle | genaue Ressource, Cast-/Charge-Regeln und Ausrüstungsgrenzen |
+| **Monk** | klarer Nahkampf-Job mit eigener mechanischer Identität; frühere Vorschläge um offensive/defensive Martial-Wege sind Ideen, nicht der feststehende Baum | Core-Loop, Gegenschlag, Haltungen, Ressource |
+| **Paladin** | defensiver stabiler Knight-/Tank-Pfad; Physical und Holy, Schutzwerkzeuge | Shield-/Waffenkatalog, Defensive-Kosten und konkrete Holy-Skills |
+| **Templar** | robust, offensiver als Paladin, Greatsword-/Holy-Richtung; keine bloße Paladin-Kopie mit mehr Schaden | genaue Rüstung und defensiver/offensiver Wechsel |
+| **Gladiator** | vorgesehene eigenständige Tank-/Martial-Endklasse als vierter Knight-Namensplatz | Abgrenzung zum Paladin/Templar/Dark Knight, Weapon-Loop, Ressourcen |
+| **Dark Knight** | Physical + Dark, standfest mit anderer Defensive; HP als riskante mögliche Ressource | exakte HP-Schwellen und Selbstschutzmechaniken |
+| **Priest** | klassischer offensiv/defensiv abstimmbarer Caster-/Healer mit eigenen exklusiven Tools | Focus-/Buch-/Relic-/Orb-Ausrüstung und Skill-Balance |
+| **Reaper** | eigener Endjob im Support-/Healing-Cluster; jüngere Namensentscheidung ersetzt frühere offene vierte Rolle | Verhältnis von Healing, Damage, Dark und Drain; exakte Klasse/Funktion |
+| **Cleric** | defensiver Healer, Sustain und Schutz; früheres Konzept One-Hand + Shield, kein Staff | ob Name und konkrete Waffenrestriktionen final bleiben; Verwechslungsfreiheit mit C#-Testklasse |
+| **Chanter** | offensiver Support-/Holy-Hybrid, Buffs und Utility; Combat Staff als starke bisherige Richtung | genaue Support-/Healing-Grenzen und Mechaniknamen |
+| **Sorcerer** | stärker offensiv spezialisierter magischer Pfad mit Elementidentität | Elementzugang, Spell-/Cast-Ressourcen, Ausrüstungsrestriktionen |
+| **Summoner** | eigenständiger Beschwörungs-/Partner-Loop statt identischer Standard-Caster | Spawn-/Turn-/Target-/Party-Regeln und Begrenzungen |
+| **Battle Mage** | echter Physical-Element-Hybrid; Angriffe können beide Komponenten verbinden; Combat Staff und Chain-artige Armor als ältere Richtung | endgültiger Weapon-/Armor-Pool und hybride Skalierung |
+| **Ghostblade** | magisch-physische Schwert-/Mystic-Knight-artige Interaktion, Weapon- und Element-Synergien | Status-, Infusion-, Ressourcen- und genaue Damage-Type-Regeln |
 
-Nicht weiter zu spezialisieren darf eine bewusste Endgame-Entscheidung sein.
+**Keine stillschweigende Erweiterung:** Die älteren Ideen `Ninja`, `Berserker`, `Hunter`, `Beastmaster/Tamer`, `Fencer` und `Warrior/Vanguard` sind **nicht** automatisch weitere Endjobs in diesem 16er-Modell. Ihre erhaltenen Detailkonzepte stehen im Legacy-/Ideenarchiv (§ 15.3). Eine spätere Umbenennung, Zusammenlegung oder Neubewertung ist möglich, aber muss dokumentiert werden.
 
-Beispiel:
+## 6.6 Spezialisierung, Fähigkeitsverlust und alternative Meisterschaft — FIXED / OPEN
 
-- Rogue bleibt Rogue.
-- Assassin/Ninja werden nicht gewählt.
-- Rogue erhält dafür eigene Mastery-/Endgame-Waffen oder andere exklusive Vorteile.
+Spezialisierung ist eine Entscheidung über **zugängliche Spielweise**, nicht eine reine Level- oder Prozent-Steigerung: ein neuer Job kann Waffen, Armor-Kategorien, Ability-Voraussetzungen und Ressourcen eröffnen und zugleich frühere Wege schließen. Ein Skill darf über seinen früheren Waffen-/Shield-Requirement unbrauchbar werden. Die dadurch entwerteten investierten Ability-Punkte sollen nach der besprochenen Richtung zurückgegeben werden; die genauen Bedingungen sind noch zu spezifizieren.
 
-Prinzip:
+Frühere Klassenstufen können **grundsätzlich** bewusst als eigenständige Endgame-Alternativen interessant sein: Ein Charakter könnte auf einer Basisklasse oder Zwischenklasse bleiben und dort eine andere Mastery-/Gear-Identität entwickeln. Ob und in welcher Anzahl das zusätzlich zu den 16 geplanten Endjobs produktionsfähig ist, ist **OPEN**. Der Wunsch begründet nicht automatisch 4 + 8 zusätzliche vollständige Endjobs.
 
-> Spezialisierung reduziert Breite und erhöht Tiefe.
+Bei der Jobkonzeption wird möglichst **rückwärts** gearbeitet: gewünschter finaler Gameplay-Loop → passende Waffe/Rüstung → Fähigkeiten/Mechaniken → bewusste Nachteile/Ausschlüsse → gemeinsamer Vorgänger. So bleiben Zwischenklassen sinnvolle Knoten statt bloßer Übergangszeiten. Früh genannte Schwellen um Level 35 und 70 sind nur illustrative Planungswerte.
 
-Der unspezialisierte/zwischenstufige Pfad darf seine eigene Endgame-Identität besitzen.
+## 6.7 Ability Network / Talent Tree / Mastery — DIRECTION / OPEN
 
-## 6.6 Endklasse ist schärfste Klassenidentität — FIXED
+Die frühere Visualisierungsrichtung für Ability-Fortschritt ist ein **zweidimensionales Knoten-/Constellation-Netzwerk** mit zentralem Startpunkt, verbundenen Clustern, optional isolierten/versteckten Knoten und einer verschiebbaren Ansicht. Knoten können aktive Abilities, Passives, Upgrades, Branches oder Spezialisierungs-Gates freischalten. Noch nicht festgelegt ist, ob dieses Netzwerk zugleich der Talent Tree ist oder ob ein eigener Talent Tree bestehende Skills verstärkt, während das Ability Network neue Tools freischaltet.
 
-Je weiter die Spezialisierung fortschreitet, desto kleiner darf der verfügbare Werkzeugkasten werden.
+Mögliche Sichtbarkeitsstufen: **bekannt/sichtbar**, **sichtbar als `?`**, **vollständig verborgen bis zu einem Trigger**. Das Netz soll dem Spieler eine Richtung zeigen können, ohne alle zukünftigen Belohnungen zu verraten. Die früh erwogene Vergabe eines Talentpunkts etwa alle fünf Level ist **kein beschlossener Takt**.
 
-Dafür sollen die verbleibenden Werkzeuge stärker aufeinander abgestimmt sein.
+**Abschluss einer Spezialisierung:** Wenn ein Job Skills ausschließt, bleiben Punkte aus gesperrten Skills nicht dauerhaft verloren; eine konkrete Refund-Regel wird beim echten Progressionssystem entworfen. Mehr gelernte als ausgerüstete Skills ist gewünscht; die oft genannte Größe von sechs aktiven Slots ist weiterhin ein **Zielwert, keine festgelegte UI-Regel**.
 
----
+**Respec:** während der Story begrenzt bzw. an einzelne klare Möglichkeiten gebunden (früher ca. ein bis zwei), im späten/postgame Verlauf freie komplette Re-Spezialisierung als Richtung. Selbst eine freie Skill-/Job-Rücksetzung nimmt **keine** versäumten Quest-, Story- oder World-State-Entscheidungen automatisch zurück. Die genauen Story-Ausnahmen, Kosten, Zeitpunkt und Companion-Regeln sind OPEN.
 
-# 7. Ability Progression & Mastery
-
-## 7.1 Combat kennt Ability, nicht ihre Unlock-Quelle — FIXED TECHNICAL DIRECTION
-
-Der Combat-Core soll langfristig nur wissen:
-
-> Dieser Character besitzt diese Ability.
-
-Woher die Ability kam, gehört nicht in den Combat-Core.
-
-## 7.2 Ability Unlock Sources — STRONG DIRECTION
-
-Abilities können über verschiedene Quellen gelernt werden:
-
-- Level-Meilensteine.
-- Quests.
-- Trainer/Shop.
-- Skill Scrolls/Tomes.
-- Boss Drops.
-- Rare Mob Drops.
-- Exploration.
-- Spezialisierung.
-- Mastery.
-- versteckte Bedingungen.
-
-Nicht jede Ability muss jedem Charakter offenstehen.
-
-## 7.3 Mastery / Ability Constellation — STRONG DIRECTION
-
-Gewünschte visuelle Richtung:
-
-- 2D-Node-Netzwerk / Constellation / Mastery Grid.
-- zentraler Startpunkt.
-- verbundene Cluster.
-- isolierte oder versteckte Nodes.
-- frei verschiebbare 2D-Ansicht.
-
-Mögliche Informationsstufen:
-
-1. vollständig sichtbar/known.
-2. sichtbar als `?`.
-3. vollständig verborgen bis Trigger.
-
-Nodes können geben:
-
-- Abilities.
-- Passives.
-- Ability-Upgrades.
-- neue Branches.
-- Specialization Gates.
-
-## 7.4 Talent Tree vs. Ability Network — OPEN
-
-Mögliche Trennung:
-
-- Ability Network bestimmt, **welche Skills** gelernt werden.
-- Talent Tree verbessert bestehende Skills/Mechaniken.
-
-Mögliche Talentpunkt-Frequenz: etwa alle 5 Level.
-
-Noch nicht fest.
-
-## 7.5 Skill-by-use Mastery — OPEN
-
-„Benutze Skill, um Mastery zu erhöhen“ wurde erwogen.
-
-Problem:
-
-- triviale Gegner könnten zum Spam-Exploit werden.
-
-Nur sinnvoll, wenn relevante Gegner-/Situationsbedingungen existieren.
+**Skill-by-use-Mastery** wurde erwogen, aber nicht beschlossen. Ein Design, das wiederholtes Spammen trivialer Gegner optimal belohnt, wäre für dieses Ziel fragwürdig; eine solche Mechanik braucht gegebenenfalls Relevanzbedingungen für Gegner/Situation.
 
 ---
 
-# 8. Weapon & Equipment Philosophy
+# 7. Waffen, Rüstung, Items und Loot
 
-## 8.1 Weapon Progression follows Class Progression — FIXED
+## 7.1 Waffen und Klassengrenzen — FIXED
 
-Base Classes besitzen kleine, überschaubare Waffenpools.
+Waffenpools sollen mit der Klassenprogression schärfer werden. Eine Spezialisierung **darf eine zuvor erlaubte Waffenfamilie entfernen**; dadurch können an Waffen gebundene alte Skills unbenutzbar werden. Abilities dürfen echte Requirements wie Klasse, Spezialisierung, Waffentyp, Schild, Status oder Ressource verlangen. Die konkrete Requirements-Datenstruktur ist BACKLOG.
 
-Mit Spezialisierung:
+Mehrere Klassen dürfen dieselbe Waffenfamilie verwenden, sofern ihre Stats, Effekte und Abilities die Builds dennoch unterscheiden. Beispielkonzepte: Battle Mage und Chanter können sich eine Combat-Staff-Familie teilen, ohne dieselbe Rolle zu erfüllen. Armor kann eigene Klasseneffekte und Richtungen haben; konkrete Slot-/Gewicht-/Rüstungstyp-Regeln sind OPEN.
 
-- entstehen neue Waffenpools,
-- werden vorhandene Pools enger,
-- werden Waffen charakteristischer,
-- werden klassenspezifische Interaktionen stärker.
+**FIXED:** Gemeinsam tragbares Gear erhält **kein** „für Klasse X empfohlen“-Etikett. Sichtbar sind echte Requirements, Waffentyp, Stats und Effekte; der Spieler entscheidet über den Build. Eine Klassenrestriktion ist eine Regel, keine Meta-Empfehlung.
 
-Frühere kompatible Waffen dürfen teilweise weiter nutzbar bleiben, müssen aber nicht optimal sein.
+## 7.2 Build-definierende Ausrüstung — DIRECTION
 
-## 8.2 Spezialisierung darf Waffen entfernen — FIXED
+Ausrüstung soll mehr als lineare Stat-Sticks ermöglichen. Gewünschte Stufen reichen von allgemein nutzbarer Waffe über spezialisierungsgebundenes Gear bis zu verwandten Endklassen geteilten und schließlich klassenexklusiven Signature-/Legendary-Waffen. Seltene, mechanisch starke Effekte dürfen individuelle Build-Kerne eröffnen. Build-definierende Items sollen in ihrer Verfügbarkeit begrenzt und teils einzigartig sein.
 
-Spezialisierungen dürfen frühere Waffenfamilien komplett verlieren.
+**DIRECTION:** Jeder Endjob soll langfristig eine oder mehrere charakteristische seltene Belohnungen besitzen, aber ein Run muss nicht alle erhalten. Genaue Zahl, Quests, Drop-Raten, Erwerbsbedingungen, Socket-/Manastone-System, Crafting, Item-Ökonomie und Ausrüstungs-Slot-Struktur sind OPEN bzw. BACKLOG. Frühere illustrative Drop-Raten oder „ca. vier Legendaries pro Run“ sind **keine festgesetzten Produktionswerte**.
 
-Beispiele:
+## 7.3 Kein Smart Loot — FIXED
 
-- Cleric-Endklasse: kein Staff mehr.
-- Assassin: nur noch Dagger-artige Waffen; frühere Bow-Abilities können dadurch nicht mehr nutzbar sein.
+Die Welt verteilt Loot nicht automatisch passend zur aktuellen Party. Ein Save darf eine ausgezeichnete Mage-Waffe finden, obwohl gerade niemand sie tragen kann. Seltene Boss- und Questbelohnungen müssen dem aktuellen Build nicht nützen. Extrem seltene Drops sind als bewusste optionale Belohnungen möglich; austauschbare tausende Stat-Sticks ohne Identität sind nicht das Ziel.
 
-## 8.3 Abilities dürfen Equipment-Voraussetzungen besitzen — FIXED
+## 7.4 Items und Verbrauchsgüter — DIRECTION / BACKLOG
 
-Abilities können an mechanische Voraussetzungen gebunden sein, z. B.:
+Normale Items sollen grundsätzlich dieselbe freie Zielphilosophie wie Abilities nutzen (`Any` für lebende Ziele, wenn nicht ausdrücklich eingeschränkt; z. B. Revive `DeadAlly`). Inventar, Verfügbarkeit, Besitzchecks, Shops, Chests, Gear-Anlegen und eine allgemeine Interaktionsvalidierung werden **nicht** in Combat-v1 vorwegimplementiert. Die `Item`-/`Flee`-Menüpunkte des aktuellen Console-Prototyps sind noch Platzhalter.
 
-- Weapon Type.
-- Shield equipped.
-- Class.
-- Specialization.
-- Status/Resource.
 
-Dadurch kann ein Waffenverlust automatisch auch den Zugriff auf bestimmte frühere Skills entfernen.
+## 7.5 Waffenprogression, Tier-Logik und Requirement-Beispiele — FIXED / DIRECTION
 
-## 8.4 Gemeinsame Waffenfamilie ≠ gleiche Spielweise — FIXED
+Die frühere Detaillierung der Ausrüstungsstufen bleibt als Richtung erhalten: (1) allgemein nutzbarer Waffentyp, (2) erst nach einer Progressions-/Spezialisierungsstufe verwendbar, (3) von verwandten Endjobs gemeinsam verwendbares Endgame-Gear, (4) stark individualisierte, klassenexklusive Signature-/Legendary-Ausrüstung. Die konkrete Datenstruktur und numerischen Tier-Grenzen sind OPEN.
 
-Mehrere Klassen dürfen dieselbe Waffenfamilie benutzen.
+**Reines Designbeispiel, kein aktueller Itemkatalog:** Mehrere frühe Klassen dürfen Dagger nutzen; ein späterer Master-Dagger könnte für verwandte Endjobs freigeschaltet sein; eine Assassin-Signature-Waffe wäre dagegen nur für Assassin. Eine Spezialisierung darf einen zuvor verfügbaren Bow oder Staff verlieren. Frühe Skills mit echtem Waffentyp-Requirement können dadurch künftig ausgeschlossen sein.
 
-Beispiel:
+Sichtbar gemacht werden Item-Typ, Stats, Effekte und **tatsächliche** harte Voraussetzungen. Die UI verteilt für gemeinsam kompatibles Gear keine „Best for X“-Sterne und kein implizites Klassen-Ranking. Selbst wenn Chanter und Battle Mage beide Combat Staff verwenden, bleiben ihre gewünschten sekundären Stats, Effekte und Fähigkeiten unterschiedlich.
 
-- Battle Mage und Chanter benutzen beide Combat Staff.
-- ihre bevorzugten Substats, Effekte und Abilities unterscheiden sich trotzdem stark.
+## 7.6 Signature Weapons und Loot-Rarität — DIRECTION / OPEN
 
-Das Spiel soll nicht künstlich für jede Klasse eine eigene Weapon Type erfinden müssen.
+Langfristig soll jede finale Endklasse mindestens eine markante Signatur-/Legendary-Waffe oder vergleichbare klassenprägende Belohnung besitzen. Ein Legendary soll **eine Spielweise oder Synergie erkennbar verändern**, nicht bloß einen linearen Attack-Wert um einige Punkte erhöhen. Denkbare Beispiele aus der früheren Designphase: Assassin verstärkt Crit/Poison/Tempo; Cleric Protection/Healing/Sustain; Chanter Staff/Buff-Hybrid; ein nicht mehr im aktuellen 16er-Plan verankerter Berserker erhöhte Risk/Reward/Lifesteal. Dies sind **Beispiele**, keine implementierten Unique-Items.
 
-## 8.5 Shared Equipment has no intended-class label — FIXED
+Die Zahl der Legendaries, die in einem Run tatsächlich erreichbar sind, bleibt offen; früh wurden etwa vier pro Run diskutiert, **nicht entschieden**. Seltene Drops bis hin zu illustrativen 0,5 %, 0,1 % oder in extremen optionalen Fällen 0,01 % wurden als grundsätzlich mögliche Philosophie besprochen, aber sind **keine fixen Produktionsquoten**. Grind ist nur sinnvoll, wenn er zu einer bedeutungsvollen individuellen Belohnung führt, nicht zu tausenden austauschbaren Stat-Sticks.
 
-Wenn mehrere Klassen ein Item mechanisch tragen dürfen, sagt das Item **nicht**, für wen es „gedacht“ ist.
+**Kein Smart Loot:** Boss, Welt und Quest vergeben ihre Gegenstände unabhängig davon, welche Klassen die aktuelle Party gewählt hat. Ein Save darf eine seltene, aktuell untragbare Waffe erhalten. Optionale Superboss-Belohnungen müssen nicht für jedes Roster verwertbar sein.
 
-Keine Anzeigen wie:
+## 7.7 Rüstung, Sockets und Ökonomie — OPEN / BACKLOG
 
-- „Best for Cleric“.
-- Sterne-Rating pro Klasse.
-- empfohlene Klasse.
-
-Das Item zeigt:
-
-- Item Type.
-- Stats.
-- Effekte.
-- echte harte Requirements.
-
-Der Spieler entscheidet anhand des Builds, wer es sinnvoll nutzt.
-
-Prinzip:
-
-> Class restriction is a mechanical rule, not an item recommendation.
-
-## 8.6 Endgame Equipment Tiers — FIXED DIRECTION
-
-Mögliche Abstufung:
-
-1. allgemeine Weapon Type.
-2. Progression-/Specialization-gebundene Weapon Type.
-3. gemeinsame Endgame-Waffe für verwandte Endklassen.
-4. extrem spezialisierte class-exclusive Signature-/Legendary-Waffe.
-
-Beispiel:
-
-- Dagger: mehrere passende Klassen.
-- Master Dagger: nur nach zweiter Spezialisierung, Assassin + Ninja.
-- Assassin Relic Dagger: Assassin only.
-- Ninja Relic Dagger: Ninja only.
+Frühere Ideen beinhalten spezielle Armor-Klassen und gearbasierte Wechselwirkungen, begrenzte einzigartige Build-definierende Gegenstände sowie eventuell ein Aion-artiges Socket-/Manastone-System. Ein solches System wird nur übernommen, wenn es **eigenständige Build-Tiefe** erzeugt; es ist keine Pflicht, Slots mechanisch bloß zu vervielfachen. Exakte Ausrüstungsplätze, Rüstungsgewichtstypen, Accessoires, Crafting, Shops, Economy, Inventarlimits und Item-/Quest-Requirements sind noch offen. Das frühere Console-Bootstrap mit auskommentierten Equipment-Ideen ist **kein verbindlicher Itemkatalog**.
 
 ---
 
-# 9. Loot Philosophy
+# 8. Gegner, Bestiary und Informationsökonomie
 
-## 9.1 No Smart Loot — FIXED
+## 8.1 Knowledge aus Beobachtung — FIXED
 
-Loot passt sich nicht automatisch an die aktuelle Party oder Klasse des Spielers an.
+Das Bestiary wird nicht nach erstem Sichtkontakt oder einem Kill automatisch vollständig. Abhängig von tatsächlich beobachteten Ereignissen können Name, HP/Level, Weaknesses, Resistances, Immunities, Abilities, Statusreaktionen und besondere Traits bekannt werden. Beispiel: Eine beobachtete Schadensnull kann eine mögliche Immunität erschließen; eine erstmals eingesetzte Bossfähigkeit wird als Name/Beobachtung vermerkt, ihre Erklärung ggf. erst später erweitert.
 
-Boss und Welt besitzen ihren Loot unabhängig vom Build.
+Repeatable Enemies dürfen lange teilweise unbekannt bleiben; genaue Freischaltregeln sind OPEN. Für wirklich einmalige oder dauerhaft missbare Gegner soll nach dem **endgültigen Sieg** der verfügbare Bestiary-Eintrag vollständig freigeschaltet werden, damit Wissen nicht unwiederbringlich verloren geht. Ein nur scheinbar einmaliger, später wiederholbarer Gegner erfordert eine klare Datenregel.
 
-Das bedeutet:
+## 8.2 Beschreibungen vs. Lösungen — FIXED
 
-- ein Ninja kann einen Assassin-Dagger finden.
-- ein physisches Roster kann eine Mage-Waffe erhalten.
-- ein Save kann eine mächtige Waffe bekommen, die niemand aktuell nutzen kann.
+Bekannte Abilities und Effekte brauchen spielrelevante, konsistente Aussagen; exakte interne Multiplikatoren/Chancen müssen nicht immer im Tooltip stehen. **Definierte Dauer und relevantes Turn-Timing** sollen grundsätzlich erkennbar sein, sobald die Fähigkeit bekannt/beschrieben ist. Beobachtbare Reaktionen, Reihenfolgeänderungen, 0 Damage, Reflect oder Heal-Inversion sind Teil des Lernens. Das Spiel erklärt **Werkzeuge**, aber nicht automatisch die Bosslösung.
 
-Das ist erlaubt und gewollt.
+Das Knowledge-System ist ein von Combat getrenntes System: Die Welt-/Enemy-Daten beschreiben, **was wahr ist**, Knowledge speichert, **was der Spieler erfahren hat**, und UI entscheidet, **was davon sichtbar wird**. UI-Verstecken darf nicht die tatsächliche Combat-Regel verändern.
 
-## 9.2 Optionaler Loot darf „gemein“ sein — FIXED
 
-Insbesondere bei:
+## 8.3 Welche Informationen durch welches Ereignis bekannt werden — FIXED CONCEPT / OPEN FORMULAS
 
-- Superbossen,
-- Rare Drops,
-- Hidden Quests,
-- Endgame-Belohnungen,
+Der Bestiary-Eintrag kann stufenweise Name, Level, HP, effektive Schadensarten, Schwächen, Resistances, Immunitäten, sichtbare Abilities, deren Beschreibungen und Sondermerkmale zeigen. Der Spieler entdeckt die Werte **durch relevante Begegnungen**, nicht indem ein Datenbank-Datensatz automatisch vollständig geöffnet wird. Beispiele: Ein beobachteter Physical-Hit mit null Schaden kann eine Hypothese bzw. je nach Regel eine dokumentierte Immunität freischalten; nach einem gesehenen Boss-Skill wird zunächst dessen Name und später seine ausführlichere Beschreibung bekannt.
 
-muss nicht garantiert sein, dass die Belohnung für den aktuellen Build optimal oder überhaupt nutzbar ist.
+Ein wiederholbar bekämpfbarer Gegner darf nach einem Kill weiterhin unbekannte Felder haben. Die **exakten** Ereignisse, Schwellen, Wiederholungszahlen und Informationsstufen sind noch nicht festgelegt. Ein endgültig besiegter **wirklich einmaliger bzw. dauerhaft missbarer** Gegner soll dagegen seinen verfügbaren Bestiary-Eintrag nach dem letzten möglichen Encounter vollständig offenbaren. Das ist eine Belohnung für den Sieg und vermeidet dauerhaft unmögliche Wissensvervollständigung. Die Ausnahme gilt nicht automatisch für jeden Storyboss, der später wiederholbar ist.
 
-## 9.3 Signature / Legendary Weapons — STRONG DIRECTION
+## 8.4 UI-Wissensgrenzen und Ability-Beschreibungen — FIXED
 
-Jede finale Endklasse soll langfristig mindestens eine echte Signature-/Legendary-Waffe besitzen.
+Die UI darf bei unbekannten Daten `???` zeigen oder Informationen verbergen, ohne dass dadurch die **wahren Enemy- oder Combat-Daten** verändert werden. Welt-/Enemy-Definition, vom Spieler freigeschaltetes Knowledge und Präsentation sind drei verschiedene Verantwortlichkeiten.
 
-Diese soll:
-
-- Klassenmechaniken verstärken.
-- neue Synergien erzeugen.
-- nicht nur „mehr Attack“ sein.
-- die Endklassenfantasie sichtbar machen.
-
-Beispiele:
-
-- Assassin Legendary verstärkt Crit/Poison/Extra-Turn-Interaktion.
-- Cleric Legendary verstärkt Block/Healing/Sustain.
-- Chanter Legendary verstärkt Staff/Buff/Hybrid-Loop.
-- Berserker Legendary verstärkt Risk/Reward und Lifesteal.
-
-Konkrete Effekte: **OPEN**.
-
-## 9.4 Anzahl der Legendaries pro Run — OPEN / STRONG DIRECTION
-
-Wahrscheinliche Richtung:
-
-- nicht jede Legendary muss in einem Run erhältlich sein.
-- grob mehrere starke Endgame-Waffen, z. B. etwa vier, könnten ein sinnvoller Zielwert sein.
-- dadurch trägt eine aktive Viererparty möglicherweise nur 1–2 gleichzeitig, abhängig vom Encounter.
-
-Noch nicht fest.
-
-## 9.5 Sehr niedrige Drop Rates sind erlaubt — FIXED PHILOSOPHY
-
-Sehr seltene Drops dürfen existieren:
-
-- 0,5 %.
-- 0,1 %.
-- eventuell 0,01 % bei wirklich besonderem optionalem Content.
-
-Grind ist akzeptabel, wenn die Belohnung einzigartig und bedeutungsvoll ist.
-
-Nicht gewünscht:
-
-- tausende austauschbare Stat-Sticks ohne mechanische Identität.
-
-## 9.6 Sockets / Manastones — OPEN
-
-Aion-artige Sockel-/Manastone-Systeme sind interessant, aber noch nicht fest.
-
-Sie dürfen nur hinzukommen, wenn sie echte Build-Tiefe erzeugen und nicht unnötig aufblasen.
+Der volle Beschreibungstext einer bekannten Ability muss für Entscheidungen relevante Bedingungen sowie definierte **Dauer und Timing** verständlich machen, aber keinen Sourcecode, jeden Zufalls-Seed oder sämtliche Multiplikatoren offenlegen. Bei besonders komplexen, einmaligen Bossen darf nach vollständigem Sieg auch eine bisher verborgene logische Triggerregel im Bestiary erklärt werden. Ein Tooltip soll jedoch keine automatische Encounter-Lösung aus den eigenen Tools zusammenstellen.
 
 ---
 
-# 10. Enemy Knowledge / Bestiary System
+# 9. Boss- und Encounter-Design
 
-## 10.1 Knowledge System existiert — FIXED
+## 9.1 Lernbare, überraschende Mechaniken — FIXED
 
-Es soll ein Bestiary-/Enemy-Knowledge-System geben, das Wissen schrittweise aus tatsächlicher Spielerfahrung aufbaut.
+Bossmechaniken müssen nicht vor dem ersten Pull offengelegt werden. Gute Begegnungen kombinieren bekannte Archetypen mit ein bis zwei ungewohnten Interaktionen. Beispielsweise darf ein defensiver Knight-Boss überraschend Reflect, eine verzögerte Aktion oder veränderte Resistances erhalten. Überraschungen sollen durch Ergebnisse, Animationen, Status oder wiederholte Versuche beobachtbar und intern konsistent sein.
 
-Der Eintrag ist nicht automatisch vollständig, nur weil ein Gegner einmal gesehen wurde.
+## 9.2 Trickster / Inversion — DIRECTION / BACKLOG
 
-## 10.2 Knowledge soll Beobachtung abbilden — FIXED
+Eine Kefka-inspirierte Trickster-Begegnung ist als Designrichtung gewünscht. Denkbare Effekte sind zeitweise Heal→Damage, Physical Damage→Healing, Fire↔Ice oder andere definierte Inversionen. Bedingungen, Ankündigungen, Verzögerung, erlaubte Zieltypen, Dauer und genaue Interaktionsregeln bleiben OPEN. Die alte GDD nannte zehn Turns als **Beispiel**, nicht als beschlossene finale Zahl. Dieses System wird nicht vor dem ersten Unity-Kampf implementiert.
 
-Mögliche Informationen:
+## 9.3 Persistente Encounter-Flags — FIXED
 
-- Name.
-- Level.
-- HP.
-- Effective / Weaknesses.
-- Resistant.
-- Immune.
-- bekannte Abilities.
-- Ability-Beschreibungen.
-- eventuell weitere Special Traits.
+Frühere Aktionen in der Welt können Bosse verändern: ein anderer Killcount, übersehene Quest oder eine Entscheidung kann Ausrüstung, Phase oder Aggressivität ändern. Ebenso darf eine frühe Bossphase Flags für spätere Phasen hinterlassen; eine später richtig gelöste Mechanik muss Fehler früherer Phasen nicht rückwirkend löschen. Konkrete Encounter und Schwellenwerte bleiben EXAMPLE/OPEN.
 
-Informationen können durch Handlungen freigeschaltet werden.
+## 9.4 Checks und Build-Antworten — FIXED
 
-Beispiele:
+Optionaler Content darf bestimmte Damage-/Statusprofile verlangen oder andere hart bestrafen. Immunität, Anticrit, Resistances, Sustain, Burst-Fenster und Party-Komposition sind gültige Werkzeuge. **Keine globale Garantie**, dass jede finale Viererparty jeden optionalen Boss besiegt; die Hauptstory-Regel aus §2 bleibt davon unberührt.
 
-- Physical Attack macht 0 Damage → Physical Immunity kann entdeckt werden.
-- Ability wird benutzt → Ability-Name wird bekannt.
-- Effekt wird erlebt → qualitative Beschreibung wird ergänzt.
 
-## 10.3 Repeatable Enemies — FIXED DIRECTION
+## 9.5 Konkrete Encounter-Bausteine — FIXED PHILOSOPHY / EXAMPLE
 
-Wiederholbare Gegner dürfen über längere Zeit teilweise unbekannt bleiben.
+**Known archetype + unexpected twist:** Ein Gegner darf zunächst wie ein konventioneller schwer gepanzerter Knight aussehen und mit den üblichen Shield-/Physical-Regeln interagieren. Eine zusätzliche Reflect-, Verzögerungs- oder Elementregel kann dieses bekannte Profil bewusst verschieben. Das ist eine Encounter-Idee, keine Pflicht, jedem Boss einen versteckten Twist zu geben.
 
-Ein Gegner muss nicht nach einem Kill automatisch zu 100 % bekannt sein.
+**Beobachtungs- und Antwortkanäle:** Schadenszahlen (einschließlich 0), tatsächliche Heilung statt Schaden, Reflect, sichtbare Buff-/Debuff-Symbole, wechselnde Resistances, geänderte Turnorder, Ankündigungen, Bewegungen/Animationen und Dialoge können Hinweise liefern. Sie müssen nicht schon vor dem ersten Versuch die komplette Regel verraten, sollten aber nach wiederholtem Beobachten schlüssig sein.
 
-Exakte Unlock-Regeln: **OPEN**.
+**Beispiele für harte optionale Checks:** Crit-Immunität; stark verminderter Physical Damage; hohe Poison Resistance; eine Lightning-Schwäche; ein zeitlich begrenztes Burst-Fenster; Cleanse-, Sustain- oder Roster-Anforderungen. Früher genannte Zahlen wie 85 % Physical Mitigation sind **illustrative Encounter-Werte**, keine allgemeine globale Balance-Regel.
 
-## 10.4 Unique / One-Time Enemies — FIXED
+**Recovery-Grenze:** Seltene überraschende Einzelziel-Todesfälle dürfen den Spieler zum Improvisieren zwingen. Eine häufige rein zufällige komplette Party-Auslöschung ohne Reaktionsfenster ist nicht die beabsichtigte Grundstruktur. Eine spätere konkrete Bossmechanik muss diese Philosophie in einer lernbaren Regel ausdrücken.
 
-Einmalige Gegner und dauerhaft missbare Bosse folgen während des Kampfes denselben Discovery-Regeln.
+## 9.6 Trickster-/Inversion-Design — DIRECTION / OPEN
 
-Nach dem endgültigen Sieg wird ihr verfügbarer Bestiary-Eintrag jedoch auf **100 % Knowledge** vervollständigt.
+Gewünscht ist eine besonders ungewöhnliche, Kefka-inspirierte Begegnung: Der Boss kann einen Zustand ankündigen, dessen Wirkung verzögert einsetzt und für eine begrenzte Zahl eigener Züge den üblichen Umgang mit Schaden oder Heilung verändert. Denkbare Zustandsänderungen sind `Physical → Healing`, `Heal → Damage`, `Fire ↔ Ice` oder andere ausdrücklich festgelegte Element-/Effekt-Umkehrungen. `???` oder bewusst unvollständige Anzeigen können das Beobachten fördern.
 
-Grund:
+**Noch nicht entschieden:** Welche Trefferarten invertiert werden; ob Status-Anwendungen, Resistances und Crit mit invertiertem Schaden interagieren; wie Zeitdauer und Tick-Zeitpunkt funktionieren; wie der Zustand angekündigt und beendet wird. Einmal definierte Regeln müssen **intern konsistent** sein. Der alte Wert „10 Turns“ ist eine Beispielzahl, **keine finale Vorgabe**. Die aktuelle freie `Any`-Zielauswahl ist auch deshalb eine bewusst nützliche Grundlage, aber Inversion ist **nicht Teil von Combat-v1**.
 
-- sonst könnten Informationen nach dem letzten möglichen Encounter dauerhaft unerreichbar bleiben.
-- der vollständige Eintrag dient als zusätzliche Belohnung und Bestätigung nach dem Sieg.
+## 9.7 World-State und phasenübergreifende Konsequenzen — FIXED / EXAMPLE
 
-## 10.5 Ability Descriptions im Bestiary — FIXED
+Frühere Weltaktionen können einen Boss in einer anderen Form auftreten lassen. Das ursprüngliche GDD-Beispiel: Wenige getötete Castle Guards → der Knight-Boss nutzt Sword/Shield und ist besonders defensiv; viele getötete Guards → Greatsword, offensiverer Kampf und andere physische Mitigation. Das ist ein **Illustrationsfall** und weder ein bestätigter Plotpunkt noch eine feste Killcount-Schwelle.
 
-Eine vollständige Beschreibung soll spielrelevante Informationen ausreichend erklären, ohne zwangsläufig interne Formeln offenzulegen.
-
-Wichtige zeitliche Regeln sollen genannt werden.
-
-Beispiele:
-
-- Duration: 5 Turns.
-- Effekt tritt am Ende des Turns auf.
-- Trickster-Effekt hält 10 Turns.
-
-Bei komplexen Superboss-Abilities darf nach dem Sieg auch logische Bedingung erklärt werden, z. B.:
-
-- Ability 3 wird nur eingesetzt, wenn Condition A/B nicht erfüllt wurde.
-- eine Fähigkeit invertiert bestimmten Schaden.
-
-Nicht notwendig:
-
-- exakter Sourcecode.
-- jede interne Random-Formel.
-- Debug-Werte.
-
-## 10.6 Information Philosophy — FIXED
-
-Eigene Spielerfähigkeiten und bekannte Effekte müssen nicht zwingend mathematisch vollständig beschrieben werden.
-
-Beispiele:
-
-Möglich:
-
-> Haste — erhöht Speed für 5 Turns.
-
-statt zwingend:
-
-> +30 % Dexterity.
-
-Möglich:
-
-> Poison Strike — Chance, Poison anzuwenden.
-
-statt zwingend:
-
-> exakt 50 %, 2 % Max HP usw.
-
-Allerdings:
-
-- **Dauer** zeitabhängiger Effekte soll grundsätzlich sichtbar sein, wenn sie bekannt/beschrieben sind.
-- Beschreibungen müssen innerhalb des Spiels konsistent sein.
-
-Der Spieler darf viele exakte Werte durch Beobachtung, Vergleiche und Erfahrung lernen.
-
-Prinzip:
-
-> Das Spiel darf Informationen liefern, ohne sie immer als Formeltext auszuschreiben.
-
-## 10.7 Gegnermechaniken müssen nicht vorher erklärt werden — FIXED
-
-Bossmechaniken, Resistances, versteckte Phase-Trigger und Encounter-Lösungen müssen nicht im Voraus offenliegen.
-
-Der Spieler darf sie erst im Kampf lernen.
+Auch innerhalb eines Encounters können Entscheidungen/Fehler aus Phase 1 einen späteren Bosszustand oder Phase-3-Angriff beeinflussen. Ein später richtig gelöster Teil muss vorherige Flags nicht automatisch löschen. Gerade optionale Endgame-Bosse dürfen dadurch einen zusammenhängenden Lern- und Planungsprozess statt isolierter Phasen darstellen.
 
 ---
 
-# 11. Boss & Encounter Design
+# 10. Story, World-State und Exploration
 
-## 11.1 Bosses are not required to disclose mechanics — FIXED
+## 10.1 Erzählkern — OPEN
 
-Bossfähigkeiten müssen vor oder während des ersten Versuchs nicht vollständig erklärt werden.
+Noch nicht festgelegt sind Hauptfigur/Origin, Auslöser der Reise, Weltkonflikt, Setting, Kapitelstruktur, zentrale Antagonisten und die konkrete Verbindung zwischen Story-Ende und optionalem Endgame. Der Systementwurf darf diese Lücken **nicht mit erfundenem Kanon füllen**.
 
-Der Spieler darf lernen durch:
+**DIRECTION:** Anfangs stärker gelenkte Reise, später mehr Offenheit. Background und Kampfklasse können getrennt sein: gemeinsames/classless Intro, später Klassenwahl; unterschiedliche kurze Starts oder ein gemeinsamer Start mit verschiedenem Background sind noch Alternativen. Backgrounds dürfen erzählerisch oder statistisch suboptimale Kombinationen ermöglichen, statt Spieler bei der Herkunftswahl in eine offensichtliche optimale Klasse zu lenken.
 
-- sichtbare Zahlen.
-- Reaktionen auf Schaden.
-- veränderte Turn Order.
-- Reflect.
-- 0 Damage.
-- Buff Icons.
-- Statuswechsel.
-- Bossdialoge.
-- wiederholte Versuche.
+## 10.2 Missables und versteckte Bedingungen — FIXED
 
-## 11.2 Known Archetype + Bastard Twist — FIXED DIRECTION
+Unspektakuläre frühe Interaktionen dürfen langfristige Flags setzen und spät Quests, Loot, Charakterbeziehungen, Bosse oder Endgame-Routen öffnen oder schließen. Es muss kein UI-Hinweis sagen „dies ist relevant“. Fortschritts-, Kapitel-, Region- oder Event-Trigger sind als Standardrichtung sinnvoller als ein ständig laufender Echtzeittimer; seltene Zeitbedingungen bleiben möglich, müssten aber ihre Zählweise klar festlegen.
 
-Superbosse sollen häufig aus einem bekannten Archetypen bestehen, dem 1–2 ungewöhnliche Mechaniken hinzugefügt werden, die nicht zum normalen Archetypen passen.
+Nicht jeder Run wird jede versteckte Quest, jeden Job-Pfad, jede Waffe und jeden optionalen Boss erreichen. **Verpasster optionaler Content** ist von einem **unbeabsichtigten Story-Softlock** klar zu unterscheiden.
 
-Beispiel:
 
-- Templar-artiger Boss mit bekannter hoher Defense/Block.
-- zusätzlich Magic Reflect oder verzögerter Death/Invert-Effekt.
+## 10.3 Origin- und Startmodelle — OPEN
 
-Dadurch kann vorhandenes Spielerwissen helfen, ohne den Encounter vollständig zu lösen.
+Die ausführlichere alte GDD enthielt zwei ernsthaft diskutierte Varianten: **A)** mehrere kurze individuelle Startorte (andere Dörfer/Quartiere), die relativ früh auf eine gemeinsame Hauptstory konvergieren; **B)** ein gemeinsamer Startort, aber unterschiedliche Backgrounds, Familienbeziehungen, Dialoge und eventuell Stats. Alternativ kann ein zunächst klassenloser/shared Intro-Abschnitt zur späteren ersten Jobwahl führen. Keine dieser Varianten ist bereits verbindlicher Story-Kanon.
 
-## 11.3 Trickster / Inversion Mechanic — STRONG DIRECTION
+Herkunft und späterer Combat-Job können voneinander getrennt sein. Ein Background darf ungewöhnliche oder für die gewählte Klasse suboptimale Attribute erzeugen; ein früher illustriertes Beispiel war eine arme, aber belesene Hauptfigur mit zusätzlicher Intelligence, die später Rogue wird. Der Startscreen muss nicht die eine „richtige“ Min-Max-Kombination vorsortieren.
 
-Eine Kefka-inspirierte Trickster-Mechanik ist ausdrücklich gewünscht.
+## 10.4 Verborgene Flags, Missables und Trigger — FIXED / DIRECTION
 
-Mögliche Form:
+Ein beiläufiges Gespräch mit einem NPC, das rechtzeitige Betreten einer Region oder eine frühere Entscheidung kann ein dauerhaftes Flag setzen. Dieses Flag darf später Quests, Items, Legendary-Komponenten, NPC-Verhalten, alternative Bossformen oder optionale Begegnungen ermöglichen beziehungsweise verhindern. Das UI ist nicht verpflichtet, jede kleine Interaktion als relevant zu kennzeichnen.
 
-- bestimmter Zustand für z. B. 10 Turns.
-- einzelne Damage-/Healing-Regeln werden invertiert oder verändert.
-- Boss kündigt Ability an.
-- Effekt tritt möglicherweise verzögert ein.
-- Zwischenzustand kann mit `???` oder uneindeutigen Informationen arbeiten.
+Für den Normalfall sind **Kapitel-, Fortschritts-, Event- und Regions-Trigger** als klarere Implementierungsrichtung bevorzugt. Echte Spielzeit kann als seltene Ausnahme relevant sein; dann muss explizit definiert werden, ob Pause, Menüs oder Offline-Zeit zählen. Die früheren Beispiele „NPC vor Abschluss Kapitel 1 angesprochen“ und „Region X vor Boss Y besucht“ sind nur Formbeispiele, keine tatsächlichen Questdaten.
 
-Mögliche Inversionen:
+## 10.5 Ausdrücklich nicht entworfener Story-Kanon — OPEN
 
-- Physical Damage → Healing.
-- Fire ↔ Ice.
-- Heal → Damage.
-- Magical Damage wird invertiert/verändert.
-
-Exakte Regeln: **OPEN**.
-
-Wichtig:
-
-- wenn eine Inversion einmal definiert ist, soll sie intern konsistent sein.
-
-## 11.4 World-State kann Boss verändern — FIXED
-
-Frühere Aktionen in der Welt dürfen Bossverhalten massiv verändern.
-
-EXAMPLE:
-
-Castle Templar Boss:
-
-- niedriger Guard Killcount → Sword/Shield, hohe Defense, geringerer Damage.
-- hoher Guard Killcount → Boss wird aggressiv, wechselt auf Greatsword, hoher Damage, sehr hohe Physical Mitigation.
-
-Die UI muss diese versteckte Bedingung nicht erklären.
-
-## 11.5 Frühere Phasen dürfen spätere Phasen beeinflussen — FIXED
-
-Bosskämpfe dürfen Flags aus früheren Phasen speichern.
-
-Eine gelöste spätere Mechanik muss nicht automatisch einen Fehler aus einer früheren Phase neutralisieren.
-
-## 11.6 DPS Checks sind erlaubt — FIXED
-
-Ein Boss darf explizit bestimmte Damage-Profile verlangen oder andere stark bestrafen.
-
-Beispiele:
-
-- Crit Immunity.
-- 85 % Physical Reduction.
-- hohe Poison Resistance.
-- Lightning Weakness.
-
-Ein vollständig physisches Roster kann dadurch bei optionalem Content scheitern.
+Noch fehlen Weltname und Karte, der Startzustand der Hauptfigur, die Motivation zum Aufbruch, politische und gesellschaftliche Hintergrundsysteme der Spielwelt, der zentrale Konflikt, konkrete Begleiter-Biografien, Kapitelverlauf, Antagonisten und die erzählerische Brücke zu Superbossen. Das Dokument **bewahrt diese Leerstelle**, statt sie mit automatisch erfundenen Fraktionen, Orten oder Plot-Twists zu füllen. Die Story soll die Systemidentität unterstützen, nicht eine schon jetzt vorgetäuschte vollständige Produktionsplanung sein.
 
 ---
 
-# 12. Class Concepts
+# 11. UI und audiovisuelle Präsentation
 
-> Hinweis: Die folgenden Klassen sind teilweise bereits klar definiert, teilweise Arbeitsnamen. Baumtopologie und Namen dürfen sich noch ändern.
+## 11.1 Erstes Ziel: funktional vor hübsch — FIXED ROADMAP
 
-## 12.1 Healer / Holy Tree
+Die Console ist **nur ein temporärer Testadapter**, nicht das Ziel-UI. Erster Unity-Meilenstein ist ein absichtlich schlichter, aber vollständig steuerbarer Battle-Prototyp: Gegner und HP oben, aktive Party unten, Aktionen/Abilities, Target-Auswahl per Buttons, HP/Mana/Status als einfacher Text oder Balken, Turnanzeige sowie Victory/Defeat. Platzhaltergrafik ist ausdrücklich ausreichend. Animationen, Kamera, Sound, aufwendige Übergänge, VFX und polierte Menüs gehören nicht in den ersten Nachweis.
 
-### Cleric — FIXED CONCEPT / NAME TEMPORARY
+**OPEN:** endgültiger HUD-Aufbau, Boss-/Normalgegner-Unterschied, Status-Detailtiefe, Tooltip-Layout, Abbildung von Multi-/All-Target, Turnorder-Darstellung und Controller-Bedienung. Als DIRECTION kann ein schlankes Kampf-HUD durch ein optionales Target-Detailfenster ergänzt werden, das Knowledge und `???` für noch unbekannte Informationen berücksichtigt.
 
-Arbeitsname, da Aion-Nähe später eventuell umbenannt wird.
+## 11.2 Abgrenzung Engine und Combat — FIXED
 
-Identität:
+Unity stellt Eingabe, Visualisierung und Updates bereit. Der Core nimmt **eine vom UI gewählte Aktion und ausgewählte Targets** entgegen, prüft deren fachliche Zulässigkeit und führt sie aus; der Core soll keine `Console.ReadLine()` erwarten oder selbst warten, bis jemand einen Button drückt. Die aktuelle synchrone Menü- und `StartCombat()`-Schleife muss daher in eine **steuerbare Schritt-/Zustandsfolge** übersetzt werden: Turn bereit → Aktion anfordern → UI-Auswahl → Core-Resolution → Ergebnis anzeigen → nächster Turn. Das ist mehr als `Console.WriteLine()` löschen, aber **kein Combat-Neubau**.
 
-- defensive Healer-Endklasse.
-- One-Hand Weapon + Shield.
-- **kein Staff**.
-- hohe Stabilität.
-- Schutz/Sustain.
-- klassische Heilung.
-- einige gemeinsame Skills mit Priest.
-- einige exklusive defensive Tools.
 
-### Chanter — FIXED CONCEPT / NAME TEMPORARY
+## 11.3 Ziel-HUD und Input-Verhalten — DIRECTION / OPEN
 
-Arbeitsname, wahrscheinlich später umbenennen.
+Der erste Unity-Proof-of-Concept braucht nur einen verständlichen Combat-Ablauf. Als einfache visuelle Anordnung wurden oben Gegner/HP, unten die aktive Party, ein Action-Menü, HP/Mana-/Statusanzeige, eine Turnorder-Information und eine einfache Victory-/Defeat-Anzeige diskutiert. Die Fähigkeitenauswahl muss die **tatsächlich vorhandenen** Abilities anbieten; Ziele sollen visuell oder notfalls über vorläufige Buttons auswählbar sein. Multi-Target braucht eine erkennbare Auswahl mehrerer verschiedener Ziele; All-Target muss nicht jeden Teilnehmer einzeln anklicken lassen.
 
-Identität:
+Die finale Darstellung von Boss- und Mob-HUD, Controller-Bedienung, Tooltip-Position, Target-Highlight, Buff-/Debuff-Symbolen, Ziel-Detailfenster und `???`-Anzeige ist noch offen. Eine einfache Zusatzansicht für aktuelle Zielinformationen kann später mit dem Knowledge-System verbunden werden. Der schlichte erste Prototyp ist **kein** verpflichtendes visuelles Enddesign.
 
-- offensiver Support-/Holy-Hybrid.
-- weniger Healing als Cleric.
-- mehr physischer/offensiver Beitrag.
-- Buffs/Utility.
-- nur **Combat Staff**.
-- Waffenfamilie kann sich mit Battle Mage überschneiden.
+---
+# 12. Technische Architektur und Content-Trennung
 
-### Priest — STRONG DIRECTION
+## 12.1 Grundsatz — FIXED
 
-Identität:
+**Combat-Core entscheidet, was spielmechanisch passiert.** Unity/Console entscheiden, welche Eingabe angeboten und wie das Ergebnis gezeigt wird. Character-/Ability-/Status-Klassen enthalten Mechanik und Zustand, nicht den Ablauf einer konkreten Konsole. World/Game Data beschreibt Inhalte; spätere Progression definiert Unlock-Quellen; Bestiary/Knowledge ist die Sicht des Spielers auf diese Daten.
 
-- stärkerer klassischer Caster-/Healer-Pfad.
-- einige Überschneidungen mit Cleric.
-- eigene exklusive Tools.
-- Weapon/Focus eventuell Buch, Relic, Orb oder ähnlicher Artstyle.
-- eventuell keine klassische Kampfwaffe, aber wahrscheinlich eigenes Equipment-Äquivalent, um Itemization nicht zu verlieren.
+Spätere Struktur kann z. B. Combat/TurnOrder, Combat/Targeting, Combat/Damage, Combat/StatusEffects, Characters, Abilities, Items und Presentation/Console umfassen. Die **konkreten** C#-Ordner und Namespaces werden beim Refactor anhand echter Verantwortlichkeiten entschieden. Neue Ordner allein lösen keine Kopplung; keine Architektur um ihrer selbst willen.
 
-### offensiver Holy/Dark Caster-Pfad — STRONG DIRECTION
+## 12.2 Combat-Entscheidung vs. UI-Vorgang — FIXED
 
-Neben Priest soll ein deutlich offensiverer Holy-/Dark-orientierter Pfad existieren.
+- **Regel:** Diese Ability hat ManaCost, RemainingCooldown, TargetType und TargetCount; welche Teilnehmer gültig sind, weiß der Core.
+- **Bedienung:** Console druckt Menüpunkte und liest Zahlen; Unity zeigt Buttons und liefert die vom Spieler angeklickte Auswahl.
+- **Regel:** Ein nicht ausführbarer Wunsch verbraucht keinen Turn; ein zulässiger, aber unnützer Cast darf ihn verbrauchen.
+- **Präsentation:** Zahlen, HP-Bar, Critical-Hit-Text, VFX oder Target-Highlights werden aus tatsächlichen Ereignissen/Resultaten abgeleitet, nicht durch direkte `Console.WriteLine()`-Aufrufe im Core erzeugt.
+- **Ablauf:** Nach Abschluss einer gültigen Aktion oder nach Stun startet die Auflösung des nächsten Turns. Die UI wartet zwischen zwei Core-Schritten auf Eingabe; der Core blockiert nicht in einem synchronen Console-Menü.
 
-Exakte Endklasse und Name: **OPEN**.
+**DIRECTION:** Ergebnismeldungen/Eventdaten sollen später reichhaltig genug sein, um Crit/Block/Dodge, Buff-Anwendung, Status-Ticks, Heal-Stärke und Endzustände anzeigen zu können. Das bedeutet nicht, jetzt ein großes Event-Framework zu erfinden. Die erste API wird aus dem vorhandenen funktionierenden Kampf abgeleitet.
 
-## 12.2 Martial / Heavy Tree
+## 12.3 Zentralisierung und Erweiterbarkeit — FIXED
 
-### Berserker — STRONG DIRECTION
+Balanceformeln und Grundregeln sollen an wenigen geeigneten Stellen liegen. Neue StatusEffects können ihren eigenen eingehenden Schaden über denselben virtuellen Hook verändern, statt dass `Character.DamageTaken()` jeden konkreten Effekt namentlich kennt. Neue Abilities sollen vorhandene Damage-/Target-/Status-Grundlagen verwenden. Neue fundamentale Mechaniken werden **nur** eingeführt, wenn sich der gewünschte Gameplay-Loop mit Bestehendem nicht sinnvoll ausdrücken lässt.
 
-Identität:
+## 12.4 Prototyp, Testinhalt und endgültiger Content — FIXED
 
-- Plate Armor.
-- klassenspezifische Plate-Effekte können bewusst mehr eingehenden Schaden verursachen.
-- starke Selbstheilung/Lifesteal über eigenen verursachten Schaden.
-- hoher Risk/Reward.
-- schwere Axt-/Heavy-Weapon-Identität.
-- zusätzliche Ausnahme: Dual-Wield mit zwei Einhandwaffen möglich.
+Aktuelle Klassenwerte, Skill-Kits, Gegnerlisten, Damage-Multiplikatoren, Test-Encounter und Console-Texte sind **technische Testdaten** und kein finales Balancing. Ein Testskill oder temporärer Debug-Ausdruck wird nach Prüfung wieder entfernt. `main` soll kompilieren und grundlegend spielbar bleiben; vor jedem Push lokal bauen und einen kurzen Smoke-Test machen. Kommentare müssen die **wirklich vorhandene** Logik beschreiben und im selben Schritt wie eine Logikänderung aktualisiert werden.
 
-### Warrior-/Vanguard-artiger Off-Tank — STRONG DIRECTION
 
-Identität:
+## 12.5 Langfristige Systemgrenzen — FIXED DIRECTION
 
-- stabiler als Berserker.
-- klassischer Off-Tank.
-- schwere Waffen.
-- weniger selbstzerstörerisch.
-- konstante Frontline.
+**Combat** berechnet Zugberechtigung, zulässige Aktionen/Ziele, Damage/Healing/Status und Ausgang. **Presentation** nimmt Eingaben entgegen und stellt die aus Core-Ergebnissen abgeleiteten Zustände dar. **Content/World Data** definiert, was existiert. **Progression/Unlocks** definiert, woher eine Figur bestimmte Fähigkeiten besitzt. **Knowledge/Bestiary** speichert, welche wahren Informationen der Spieler bereits entdecken durfte. Diese Grenzen machen z. B. eine spätere vollständige Bestiary-Anzeige möglich, ohne die eigentlichen Enemy-Werte zu verändern.
 
-Name und genaue Baumposition: **OPEN**.
+**Breitere Interaktionsvalidierung** (Inventarbesitz, verriegelte Tür, Queststatus, Weltzustand, Ressourcen, Interaktionsreichweite) ist ein möglicher eigener späterer Baustein. Sie wird **nicht** schon wegen der drei jetzigen Combat-Ability-Checks als ein universelles System implementiert. Erst konkrete spätere Interaktionen definieren, welche gemeinsame Abstraktion erforderlich ist.
 
-### Paladin — STRONG DIRECTION
+**Backend-/Datenhaltung:** Ein Datenbank- oder Dateiformat für Charaktere, Items, Progression und World-State ist noch nicht entschieden. Eine C#-Klasse ist nicht automatisch eine künftige SQL-Tabelle; SQL-Lernen oder konzeptionelle Schemata ändern die vereinbarte Reihenfolge `Combat-Cleanup → Console/Core-Split → Unity-Proof-of-Concept` nicht von selbst.
 
-Identität:
-
-- klassische Tank-Endklasse.
-- physischer + Holy-basierter Schaden.
-- sehr hohe Stabilität.
-- defensive Tools.
-
-### Templar — STRONG DIRECTION / NAME TEMPORARY
-
-Identität:
-
-- beefy, offensiver als Paladin.
-- Greatsword-orientiert.
-- Holy-DPS-Variante.
-- hohe Standfestigkeit, aber nicht derselbe Defensive-Loop wie Paladin.
-
-### Dark Knight — STRONG DIRECTION
-
-Identität:
-
-- physischer + Dark Damage.
-- beefy, aber andere Defensive als Paladin/Templar.
-- HP als Ressource für Buffs, Schaden oder Defensive möglich.
-- bewusste Interaktion mit gefährlichen HP-Schwellen.
-
-### vierter Knight-/Heavy-Endpfad — OPEN
-
-Noch keine überzeugende Identität festgelegt.
-
-## 12.3 Rogue / Trickery / Martial Tree
-
-### Assassin — FIXED DIRECTION
-
-Identität:
-
-- maximaler Single-Target-Burst.
-- Crit.
-- Poison/Bleed.
-- Multi-Hit.
-- Execution-artige Effekte.
-- Extra-Turn-/Tempo-Synergien möglich.
-- stark spezialisierte Dagger-Waffen.
-
-### Ninja — STRONG DIRECTION
-
-Identität:
-
-- mehr Debuffs.
-- mehr Gruppen-Utility.
-- weniger reiner Single-Target-Burst als Assassin.
-- Status-/Tempo-/Control-orientierter.
-- Dagger-Überschneidungen mit Assassin möglich.
-
-### Monk Branch — STRONG DIRECTION / DETAILS OPEN
-
-Mögliche Entwicklung aus Rogue-/Martial-Vorstufe.
-
-Zwei mögliche Endrichtungen:
-
-- offensiver Battle Monk / Kung-Fu-Master-artiger Pfad.
-- defensiver/spiritueller Pfad.
-
-Konkretes Core-Gimmick noch **OPEN**.
-
-## 12.4 Fencer — STRONG DIRECTION AS SPECIAL CLASS
-
-Fencer könnte besser als Special Class funktionieren statt in einen Hauptbaum gezwungen zu werden.
-
-Identität:
-
-- leichte Rüstung.
-- Rapier/Einhandwaffe.
-- defensive Präzision.
-- Parry → Riposte / Counter-Loop.
-
-## 12.5 Parry Mechanic — OPEN / POSSIBLY JUSTIFIED
-
-Neue Core-Mechaniken sollen nur eingeführt werden, wenn bestehende Systeme die Klassenfantasie nicht ausreichend ausdrücken.
-
-Fencer könnte ein sinnvoller Ausnahmefall sein.
-
-Mögliche Mechanik:
-
-- erfolgreicher Parry negiert oder reduziert starken Schaden.
-- Parry erzeugt Counter-/Riposte-Zustand.
-- nach erfolgreichem Parry werden besondere Abilities möglich.
-
-Nicht jetzt implementieren.
-
-## 12.6 Battle Mage — STRONG DIRECTION
-
-Identität:
-
-- Hybrid aus physischem und elementarem Schaden.
-- einzelne Abilities können Physical + Element-Komponente verbinden.
-- keine reine Caster-Kopie.
-- eher Chain-artige Rüstung als aktuelle Richtung.
-- Combat Staff als mögliche Waffenfamilie.
-- Waffenüberschneidungen mit Chanter möglich, aber andere Substats/Abilities.
-
-## 12.7 Hunter — STRONG DIRECTION
-
-Hunter als Archetyp ist gewünscht.
-
-Möglicher späterer Pfad:
-
-- Beastmaster.
-- Tamer.
-
-Details offen.
+**Projekt-/Codequalität:** Statt alle Regeln in `CombatSystem.cs` zusammenzuziehen, sollen Benutzereingabe, Darstellung und Core-Ablauf bei Bedarf in geeignete Verantwortlichkeiten getrennt werden. Namespace- und Ordnernamen allein erzeugen keine Architektur; jeder strukturelle Schnitt muss durch Verantwortung, Erweiterbarkeit oder Testbarkeit begründet sein. `main` soll kompilieren und grundlegend startbar bleiben.
 
 ---
 
-# 13. Class / Equipment Interaction Rules
+# 13. Aktueller Implementierungsstand (September 2026)
 
-## 13.1 Shared Skills between Endclasses — FIXED
+## 13.1 Vorhandener C#-Prototyp — IMPLEMENTED
 
-Endklassen dürfen Teile ihres gemeinsamen Ursprungs behalten.
+**Stack:** C# / .NET 10, aktuelle Console-Testoberfläche; Unity als nächste Engine. Der gegenwärtige Prototyp ist ein Combat-Test und **noch keine vollwertige JRPG-Spielwelt**.
 
-Beispiel:
+- `Character`/`Enemy`, vier Job-Testklassen und Gegnerbeispiele; HP/Mana, Stats, Speed, Crit, Block, Dodge, Defense/Armor, XP-/Level-Grundstruktur.
+- Many-vs-Many, dynamische Reihenfolge nach Speed bei einer regulären Aktion pro Runde, Stun- und Cooldown-Verarbeitung.
+- Direkter Physical-/Magic-Angriff, `DamageResult`, zentrale direkte-Treffer-`DamageTaken()`-Pipeline und sechs DamageTypes mit Resistances/Weaknesses.
+- Ability-Basis mit ManaCost, Cooldown, TargetType und TargetCount; zentrale Auswahl gültiger Ziele, Listen-Execute und Mehrziel-Probelauf.
+- Status-Basis, Dauer-/Reapply-Logik, Stun, Slow, Haste, IronGuard, Poison, Bleed und Regeneration.
+- Mana-/Cooldown-/No-Targets-Checks vor Ability-Ausführung; Console-Item/Flee sind noch Platzhalter.
 
-- Priest und Cleric teilen einige Heals.
-- Cleric besitzt zusätzliche defensive Tools.
-- Priest besitzt zusätzliche reine Healer-/Caster-Tools.
+Die früher im GDD v0.1 als „nächster großer Schritt“ beschriebenen **Cooldowns, Ability-Targeting und TargetCount** dürfen deshalb in keinem neuen Dokument mehr als nicht implementiert auftauchen.
 
-Keine Endklasse muss vollständig einzigartige Ability-Listen besitzen.
+## 13.2 Vier aktuelle Test-Kits — IMPLEMENTED, NICHT finales Game-Balancing
 
-## 13.2 AllowedClasses und Equipment Requirements — STRONG TECHNICAL DIRECTION
+| Testklasse | Derzeitige vier Fähigkeiten | Testzweck |
+|---|---|---|
+| Warrior | HeavyStrike, ShieldBash, IronGuard, Hamstring | Physical, Stun/Slow, Defensive und fremdes Buff-Target |
+| Rogue | DoubleSlash, PoisonStrike, RendingSlash, Rupture | Multi-Hit, Poison/Bleed, Crit-/Hit-Bedingungen |
+| Cleric | SmallRegeneration, MinorHeal, Haste, MinorSmite | HoT/Heal, Support/Speed, Holy Damage |
+| Mage | SmallFireball, IceShard, Shock, Meditation | Fire/Ice/Lightning, Slow/Stun-Chance, Self-Mana-Regeneration |
 
-Spätere Datenmodelle könnten Abilities und Equipment mit Regeln wie folgenden beschreiben:
+**Hinweis zur IronGuard-UI:** Der Buff wird nach derzeitiger Logik auf das gewählte `Target` gelegt; der bisherige Console-Satz „[User] uses [Name], reducing incoming Physical damage ...“ benennt das Ziel nicht. Beim späteren Reporting-Split muss die Anzeige das tatsächliche Ziel darstellen. Die Fähigkeit ist standardmäßig frei targetbar, sofern ihre Definition nicht ausdrücklich eingeschränkt wird. `Meditation` ist dagegen `Self`.
 
-- AllowedClasses.
-- RequiredSpecialization.
-- RequiredWeaponType.
-- ShieldRequired.
-- RequiredStatus.
-- ResourceRequirement.
+## 13.3 Aktueller Cleanup-Stand — LOKAL GEMELDET, NICHT NEU GEPUSHT
 
-Das dient als Mechanik, nicht als Empfehlungssystem.
+Nach dem letzten verifizierten `main`-Commit wurde lokal, Datei für Datei und **ohne beabsichtigte Mechanikänderung**, mit dem Hygiene-Cleanup begonnen. Laut bisheriger Rückmeldung bereits bearbeitet: `Program.cs`; Umbenennung `Character/Charakter.cs` → `Character/Character.cs` mit Kommentar-/Spacing-Hygiene; Ability-Basis; StatusEffect-Basis und IronGuardEffect; Haste, Slow, Stun (Dateiname `StunEffect.cs`, **Klasse möglicherweise weiterhin `Stun`**); DoT-/HoT-Basisklassen und kleine Effektdateien.
 
----
+**Beim nächsten Coding-Einstieg:** Die vier Job-Dateien `Character/Jobs/Rogue/Rogue.cs`, `.../Cleric/Cleric.cs`, `.../Mage/Mage.cs`, `.../Warrior/Warrior.cs` sind als **nächster noch nicht bestätigter Cleanup-Schritt** vorgesehen: unnötige `using`s, alte Skilltree-/Zukunftsdesign-Kommentare entfernen, Constructor-Formatierung vereinheitlichen; Stats, Ability-Reihenfolge und Mechaniken unangetastet lassen. Anschließend die **16 Skill-Dateien** auf Benennung, Beschreibung ↔ tatsächliches Verhalten, alte Sonderlogik und unerwünschte Console-Kopplung prüfen.
 
-# 14. Information Philosophy
+**Wichtig:** Der vorliegende Text ist kein Commit und verändert keine Repository-Datei. Bei einem späteren Push lokale Änderungen durch Build und kurze Tests bestätigen. Das Rename einer Datei ist nicht automatisch ein Rename ihrer Klasse.
 
-## 14.1 Eigene Tools dürfen qualitativ beschrieben sein — FIXED
 
-Das Spiel muss nicht jeden Zahlenwert im Tooltip offenlegen.
+## 13.4 Verifizierungsgrenzen des letzten dokumentierten Stands — IMPLEMENTED / TO VERIFY
 
-Beispiele:
+**Code-Beobachtung, kein Testnachweis:** Die zuletzt geprüfte Repository-Fassung (Commit `288fb27e`, 16.09.2026) enthält die direkte Damage-Pipeline in `Character.DamageTaken()`, den virtuellen `StatusEffect.ModifyIncomingDamage()`-Hook, den Physical-Multiplikator `0.7` in `IronGuardEffect` und die Anwendung des Buffs auf das gewählte Ziel. `CombatSystem.PlayerTurn()` enthält den No-valid-target-Check. Die aktuelle `Ability`-Basis besitzt `TargetType` und `TargetCount` und nimmt eine `List<Character>` entgegen.
 
-Akzeptabel:
+**Vom Entwickler berichtet:** Build erfolgreich; IronGuard kann einem anderen Charakter gegeben werden; eine temporäre Ability wählte zwei verschiedene Ziele und wirkte auf beide; anschließende Hygiene-Arbeit wurde lokal ausgeführt. Das ist **keine** Aussage, dass ich die lokale Fassung ausgeführt oder sämtliche Combat-Kantenfälle getestet hätte.
 
-> Haste — erhöht Speed für 5 Turns.
+**Noch zu prüfen:** numerische 30-%-Reduktion nur bei Physical unter kontrollierten Bedingungen, Status-Refresh im Grenzfall, All-Targets (`TargetCount = 0`) mit echtem Content, Wechselwirkungen von Tod/Start-/End-of-Turn und Regression nach der Console/Core-Trennung. Vollständige Item-, Flee-, Revive- oder Summon-Systeme sind **nicht implementiert**. Die kosmetischen lokalen Dateiumbenennungen aus dem Cleanup sind keine bestätigten neuen Remote-Dateipfade.
 
-statt zwingend:
 
-> +30 % Dexterity für exakt 5 Turns.
+## 13.5 Aktuelle 16 Test-Abilities: mechanische Bestandsaufnahme — IMPLEMENTED / TEST DATA
 
-Akzeptabel:
+Die folgende Tabelle beschreibt die **auf dem zuletzt verifizierten Remote-Commit sichtbare Testlogik**, nicht die endgültige Job-Balance. Die Werte dienen beim Refactor als Referenz, um versehentliche Verhaltensänderungen zu erkennen. Soweit nicht anders angegeben, nutzen die Skills aktuell den Default `TargetType.Any`, `TargetCount = 1` und wählen intern `Targets[0]`.
 
-> Has a chance to Poison the target.
+| Job / Ability | Aktuelle Kosten / CD | Technisches Testverhalten und Hinweise |
+|---|---|---|
+| Warrior – **HeavyStrike** | 20 Mana / 3 | NormalAttack; RawDamage auf 150 %; direkter Physical-Treffer. |
+| Warrior – **ShieldBash** | 15 / 4 | NormalAttack ×0,8; falls Treffer nicht gedodgt und Ziel lebt: Stun für 1 künftigen eigenen Zielzug. Die Beschreibung erwähnt Shield, der aktuelle Combat prüft aber noch **kein tatsächlich ausgerüstetes Schild**. |
+| Warrior – **IronGuard** | 20 / 5 | frei wählbares lebendes Ziel; IronGuardEffect für 3 künftige eigene Zielzüge; im Hook Physical ×0,7; aktueller Console-Text nennt nicht explizit das gewählte Buff-Ziel. |
+| Warrior – **Hamstring** | 20 / 5 | NormalAttack ×0,75; nach erfolgreichem überlebten Treffer Slow für 2 zukünftige Zielzüge, Speed −3. |
+| Rogue – **DoubleSlash** | 10 / 1 | Maximal zwei getrennte NormalAttacks auf dasselbe Ziel; je Treffer +25 Prozentpunkte auf den Crit-Roll; zweiter Treffer nur, falls Ziel nach dem ersten lebt. |
+| Rogue – **PoisonStrike** | 25 / 3 | NormalAttack; nach erfolgreichem überlebten Treffer 50-%-Poison-Chance; Poison 5 Züge, direkter HP-Tick aktuell 2 % Ziel-MaxHP (mindestens 1). |
+| Rogue – **RendingSlash** | 25 / 2 | NormalAttack; nach erfolgreichem überlebten Treffer 75-%-Bleed-Chance; Bleed 2 Züge mit Tick von aktuell 50 % des User-PhysicalDamage (mindestens 1). |
+| Rogue – **Rupture** | 30 / 5 | NormalAttack; bei bereits aktivem Bleed garantierter Crit-Roll und RawDamage ×2; Refresh des vorhandenen Bleed nur bei erfolgreichem nichttödlichem Treffer. |
+| Cleric – **SmallRegeneration** | 15 / 2 | HoT auf gewähltes lebendes Ziel für 4 zukünftige Zielzüge; Tick zu Turnstart aktuell 1 % Ziel-MaxHP (mindestens 1); HP-Cap bleibt aktiv; Ausgabe zeigt nominalen Tick. |
+| Cleric – **MinorHeal** | 10 / 1 | Sofortheilung auf gewähltes lebendes Ziel um aktuell 10 % Ziel-MaxHP (mindestens 1), auf MaxHP begrenzt. **Abweichung vom jüngeren Designbeschluss:** die zuletzt gepushte Console-Ausgabe zeigt aktuell `actualHeal`, nicht nominale Heilungsstärke. Beim späteren Reporting-/Skill-Cleanup bewusst angleichen, nicht als bereits erledigt darstellen. |
+| Cleric – **Haste** | 30 / 3 | Haste auf gewähltes lebendes Ziel für 3 zukünftige Zielzüge; aktuell Speed +10; `OnRemove` nimmt denselben Wert zurück. |
+| Cleric – **MinorSmite** | 15 / 0 | Magischer Holy-Treffer ohne Basis-Cooldown; der in `StartCooldown` gesetzte Restwert wird am nächsten eigenen Zug reduziert. |
+| Mage – **SmallFireball** | 15 / 2 | Direkter magischer Fire-Treffer; kein automatisch implementierter Burn. |
+| Mage – **IceShard** | 10 / 2 | Direkter magischer Ice-Treffer; bei nicht gedodgtem und überlebtem Ziel Slow 2 Züge, Speed −3. |
+| Mage – **Shock** | 15 / 2 | Direkter magischer Lightning-Treffer; nach nicht gedodgtem und überlebtem Ziel 30-%-Chance auf Stun 1 Zug. |
+| Mage – **Meditation** | 0 / 5 | `TargetType.Self`; stellt derzeit höchstens 50 fehlendes Mana wieder her. Bei **vollem Mana** wird die Aktion im Console-Turn trotzdem beendet, aber die gegenwärtige `Execute`-Verzweigung startet **keinen Cooldown**. Ob auch ein leerer Cast den Cooldown auslösen soll, ist eine bewusst noch zu prüfende Detailregel und **kein** Grund, eine Full-Mana-Aktion ungültig zu machen. |
 
-statt zwingend:
-
-> 50 % Chance, 2 % Max HP pro Tick.
-
-Beide Informationsstile können fair sein, solange sie konsistent sind.
-
-## 14.2 Zeitliche Dauer soll sichtbar sein — FIXED
-
-Wenn ein Effekt eine definierte Turn-Dauer besitzt und seine Beschreibung freigeschaltet/bekannt ist, soll diese Dauer grundsätzlich genannt werden.
-
-Beispiele:
-
-- Poison: 5 Turns.
-- Haste: 5 Turns.
-- Trickster Inversion: 10 Turns.
-
-Dies ist nötig, damit der Spieler taktisch planen kann.
-
-## 14.3 Erklär nicht automatisch die Lösung — FIXED
-
-Das Spiel darf dem Spieler sein Werkzeug erklären, ohne ihm zu sagen, wie der nächste Boss damit gelöst wird.
-
-Beobachtbare Reaktionen sind selbst Information.
-
-Beispiele:
-
-- 0 Damage.
-- Heal statt Damage.
-- veränderte Reihenfolge.
-- Reflect.
-- plötzlich niedrigerer Schaden.
+**Reporting-Regel:** Nominale Heilstärke ist das jüngere beabsichtigte Game-Design, auch wenn `MinorHeal` aktuell noch effektive Heilung meldet. Der spätere UI-Split darf Meldungen und echte HP-Änderungen nicht vermengen. **Testdaten-Regel:** Aufgelistete Mana-Kosten, Chancen, Prozentwerte und CDs sind die aktuelle Baseline der Test-Kits, keine finale Balancing-Zusage für die spätere Klasse gleichen Namens.
 
 ---
 
-# 15. Hidden Content, Flags & Missables
+# 14. Verbindliche Entwicklungsgrenze: Combat-v1 vor Unity
 
-## 15.1 Frühere kleine Entscheidungen dürfen sehr spät wirken — FIXED
+## 14.1 Was bereits abgeschlossen ist
 
-Unscheinbare Handlungen dürfen versteckte World-State-Flags setzen.
+- Enemy-Speed und dynamische Turnorder.
+- Statusdauer mit Turn-Start-Snapshot.
+- Allgemeines TargetType/TargetCount-System und Auswahl verschiedener Mehrfachziele.
+- Allgemeiner Hook zur Veränderung eingehenden Schadens, inklusive IronGuard-Übertragung auf ein anderes Target.
+- Minimale Action-Validation für vorhandene Abilities (Mana, Cooldown, mindestens ein gültiges Ziel, kein verlorener Turn bei technisch unmöglicher Aktion).
 
-Diese können viel später:
+**Offene Verifikation:** numerischer IronGuard-Smoke-Test und gründlicherer Gesamt-Regressionstest stehen noch aus. Für die aktuell voranschreitende Hygiene-Arbeit muss nicht extra ein neuer Testskill gebaut werden.
 
-- Quests öffnen.
-- Quests schließen.
-- Items ermöglichen.
-- Legendary-Komponenten ermöglichen.
-- Bosse verändern.
-- NPC-Verhalten verändern.
+## 14.2 Die nächsten Schritte in Reihenfolge — FIXED ROADMAP
 
-Das Spiel muss den Spieler nicht darauf hinweisen, dass die Handlung relevant war.
+1. **Cleanup, Schritt für Schritt:** kosmetische Hygiene; danach Skills auf Verhalten/Beschreibung prüfen; dann `CombatSystem.cs` auf Verantwortlichkeiten, Naming, ungenutzte Reste und Edge Cases untersuchen. Kein neues Feature. Die nominale HoT-Anzeige **nicht** als Bug ändern; `MinorHeal` meldet im letzten verifizierten Code dagegen noch den effektiven Heal und soll bei der Reporting-Bereinigung an die nominale Regel angepasst werden; die direkte DoT-HP-Regel **nicht** ungefragt durch die Mitigation-Pipeline ersetzen.
+2. **Console/Core-Split:** Eingabe-/Menü-/Target-Auswahl und unmittelbare Ausgabe aus dem eigentlichen Combat-Core ziehen; `PlayerTurn()` und den synchronen `StartCombat()`-Ablauf in eine von außen steuerbare Zug- und Action-Resolution überführen. Bei jedem Logikumbau gleichzeitig betroffene Kommentare aktualisieren.
+3. **Persönlicher Verständnischeck:** Ohne vorheriges Auswendiglernen erklären, bestehenden Code lesen, kleine Fehler finden, eine Mini-Erweiterung selbst formulieren und eine geänderte Anforderung ohne Vorlage bearbeiten. Ziel ist eine präzise Lernlandkarte, keine Schulnote. Syntaxlücken von Verständnislücken unterscheiden und gezielt üben.
+4. **Technischer Combat-v1-Abnahmetest:** normaler Angriff, elementarer Schaden/Resistance, Crit/Dodge/Block, IronGuard Physical vs. non-Physical, Stun/Slow/Haste, Poison/Bleed/HoT, Dauer, Reapply, Cooldowns, Ein-/Mehr-/All-Target, Self/Ally/Enemy/DeadAlly soweit real vorhanden, kein gültiges Ziel, Toten-/Win-/Loss-Verhalten, dynamische Speed-Reihenfolge. Keine Dummy-Features allein für einen hübschen Testplan erfinden.
+5. **Unity-Proof-of-Concept:** technisch hässlicher, spielbarer Kampf mit Buttons, Zielauswahl und verständlicher Ergebnisanzeige; Platzhalter statt Art-Pipeline.
 
-## 15.2 Missable Long-Term Conditions — FIXED
+**Nach dieser Grenze STOP für neue Combat-Fundamentalsysteme bis zum ersten Unity-Kampf**, außer bei echtem Bug oder technischem Blocker. Neue Statusarten, Summon-Architekturen, Fraktionen, neue Endjobs, allgemeine Item-/Quest-Validation, Parry, extra Turn-Systeme, große KI oder komplexe HUD-Sonderfälle gehören zunächst ins Backlog. Der Langzeitumfang des Spiels bleibt groß; **der nächste Lern- und Implementierungsschritt bleibt klein**.
 
-Optionale Endgame-Inhalte dürfen dauerhaft verpasst werden.
+## 14.3 Danach erster vertikaler Ausschnitt — DIRECTION
 
-Beispiel:
+Nach dem ersten Unity-Combat-Prototyp können Town/Outdoor-Map, Bewegung, Encounter-Übergang, Rückkehr auf die Karte, XP/Level, Loot, Inventar, Shop/Chest und einfache NPC-/Dialog-Struktur schrittweise folgen. Save/Load, Questketten, Story, große Klassenbäume, Art und Audio sind eigene spätere Milestones. Keine Pflicht, alles gleichzeitig umzusetzen.
 
-- NPC früh genug angesprochen.
-- Kapitel abgeschlossen.
-- spätere Quest wird dadurch freigeschaltet.
-- ohne das frühe Flag existiert die Quest auf diesem Save nicht.
 
-## 15.3 Zeit vs. Progress Trigger — STRONG DIRECTION
+## 14.4 Technische Abnahme: Was muss vor dem Unity-Umstieg beobachtbar funktionieren? — FIXED ROADMAP
 
-Kapitel-/Event-/Region-Trigger sind meist sauberer als echte Spielzeit.
+Die finale Combat-v1-Abnahme soll den bestehenden Featureumfang und die nach der Trennung neu entstandene Steuerbarkeit belegen: (a) Basic Attack und vier vorhandene Job-Kits; (b) Mana-/Cooldown-Gating, ungültige Targets ohne Turnverbrauch, aber erlaubte suboptimale Casts; (c) Single-/Multi-/All-Target, soweit echte vorhandene Abilities sie abdecken; (d) Physical/Magic und Resistances, Crit/Dodge/Block und IronGuard gegen Physical/non-Physical; (e) Start-/End-of-Turn, Duration, Stun, Slow/Haste, DoT/HoT, Refresh; (f) dynamische Reihenfolge, tote/spawnende Teilnehmer, Victory/Defeat; (g) Core kann aus externer UI schrittweise gesteuert werden, ohne blockierende Console-Eingabe.
 
-Mögliche Bedingungen:
+Es wird **kein zusätzlicher Testskill nur für ein vollständiges Kästchen** erfunden, wenn eine Regel in Combat-v1 lediglich vorbereitet, aber noch ohne echten Content vorhanden ist (`DeadAlly`/Revive, umfassende Items, komplexer All-Target-Skill). Stattdessen wird transparent notiert, was nur code-reviewt und was tatsächlich gespielt wurde. Die finale Abnahme umfasst auch Kommentare/Beschreibungen, die nach Logikänderungen dieselbe Semantik ausdrücken müssen.
 
-- vor Ende Kapitel 1.
-- vor Betreten Region X.
-- vor Boss Y.
-- vor Event Z.
+## 14.5 Nach dem Kampf-Proof-of-Concept: Vertical Slice — DIRECTION
 
-Echte Spielzeit darf als seltene absichtliche Ausnahme existieren, müsste dann aber klar definieren, ob Pause/Menüs zählen.
+Möglicher späterer geschlossener Ablauf: kleine Town → Outdoor-Map → Bewegung → Encounter → Combat Scene → Party-Aktionen/Status/Turnorder → Victory/Defeat → Rückkehr auf die Map. Danach in separaten Schritten XP/Level, Loot, Inventory, Shop/Chest, einfache NPCs und Dialoge. Welt-Quests, Savegames, vollständige Jobtrees, Musik, Animationen und Art-Produktion sind **eigene** Meilensteine. 2D und Singleplayer bleiben die Scope-Richtung; 3D und Multiplayer sind aktuell keine Entwicklungsziele.
 
 ---
 
-# 16. UI / UX
+# 15. Offene Fragen und bewusst geparkte Ideen
 
-## 16.1 Console ist nur temporäre Testoberfläche — FIXED
+## 15.1 Wichtige offene Entscheidungen
 
-Die aktuelle Console ist keine geplante finale Präsentation.
+- Exakte Verzweigung **welche Starterklasse → welche zwei Zwischenklassen → welche vier Endjobs**; genaue Klassennamen auf Starter-/Zwischenstufe.
+- Mechanische Identität und Abgrenzung vor allem von Gladiator, Ranger, Samurai, Monk, Reaper, Sorcerer, Summoner und Ghostblade; exakte Klassenwaffen/-rüstung.
+- Ob frühe Klassenstufen als freiwillige eigenständige Endgame-Pfade zusätzlich zum 16er-Endjob-Gerüst tragfähig sind.
+- Konkrete Progressionslevel; Talentpunkt-Häufigkeit; sechs Ability-Slots vs. anderer Wert; genaue Respec-Regeln und Ausnahmen.
+- Vier oder fünf aktive Party-Mitglieder; verbindliche Rostergröße; besondere Companion-Varianten.
+- Ob Magic generell blockbar bleibt; Reihenfolge/Stacking zukünftiger Mitigation-Effekte; Sonderfall Extra-Turns.
+- Genaue Item-/Loot-/Legendary-Zahlen, Economy/Crafting, Gear-Slots und optionale Sockets.
+- Start/Origin, Welt, Story, Hauptkonflikt, Regionen, Questdesign, Encounter-Verteilung.
+- Bestiary-Unlock-Formeln, finales Kampf-HUD, Target-Detailfenster, Controller-UX.
 
-Der Combat-Core soll später ausreichend von Console/Input/Thread.Sleep getrennt werden, bevor oder während der Unity-Integration.
+## 15.2 Backlog, nicht Combat-v1
 
-## 16.2 Unity ist nächster großer visueller Schritt — FIXED ROADMAP
+Fencer/Parry, alternative Ninja-/Berserker-/Hunter-/Beastmaster-/Tamer-Entwürfe, Summon-Loop, Extra-Turns, Team-/Faction-System, Zombie- und Trickster-Inversion, große Enemy-AI, ausgefeilte Item-/Quest-/World-Interaction-Validation, Talent-/Mastery-Netz, vollständiges Equipment/Inventar, Legendary-Quests, World-State-Flags, Bestiary-UI, Save/Load und polierte audiovisuelle Präsentation.
 
-Nach Combat-v1 soll ein kleiner Unity-Prototyp folgen.
+Diese Ideen sind nicht verworfen, aber eine spätere Designentscheidung muss festhalten, ob sie zum finalen Gerüst passen. **Kein 17. Endjob durch ein altes Konzeptdokument, kein neues Fundamentalsystem allein wegen einer coolen Idee.**
 
-Nicht vorher noch unendlich viele neue Combat-Fundamentalsysteme hinzufügen.
 
-## 16.3 Battle HUD — OPEN
+## 15.3 Historisches Klassen-/Mechanikarchiv: erhalten, aber nicht stillschweigend aktiv — ARCHIVE / BACKLOG
 
-Zu entscheiden:
+Die GDD v0.1 enthält ausführliche Konzepte, die **vor** der späteren 4→8→16-Zielstruktur entwickelt wurden. Ihr Verbleib hier bedeutet *Idee bewahren*, nicht *neuen 17. Endjob oder zusätzliche Zwischenklasse beschließen*:
 
-- Unterschied zwischen normalen Mobs und Boss-HUD.
-- Statusanzeige.
-- Turn Order Darstellung.
-- Zielinformationen.
-- Buff/Debuff Visualisierung.
+| Früherer Entwurf | Frühere differenzierte Idee | Aktueller Status |
+|---|---|---|
+| **Ninja** | verwandt mit Assassin, aber mehr Debuffs, Status-/Tempo-/Control- und Gruppenutility statt primär maximalem Single-Target-Burst; Dagger-Überschneidung möglich | Nicht in der derzeitigen 16er-Namensliste; Wiederaufnahme/Umbenennung offen |
+| **Berserker** | Plate trotz erhöhter Verwundbarkeit durch spezielle Rüstungseffekte; schwerer Axt-/Heavy-Weapon-Stil, Lifesteal über selbst verursachten Schaden, riskante Offensive; als Ausnahme Dual-Wield mit zwei Einhandwaffen denkbar | Eigenständiges altes Rollenprofil, derzeit kein zusätzlicher Endjob |
+| **Warrior-/Vanguard-artiger Off-Tank** | stabilerer Heavy-Fighter als Berserker, konstante Frontline, schwere Waffen | Arbeitskonzept ohne festgelegten Endjob-Slot |
+| **Fencer** | leichte Rüstung, Rapier/Einhandwaffe, Präzisionsdefensive; Parry → Riposte/Counter-Loop | Eher mögliche Special Class; weder Klassenbaum noch Parry beschlossen |
+| **Parry als Core-System** | Treffer vermeiden/reduzieren, Counter-Zustand erzeugen, besondere Riposte-Ability öffnen | Nur bei erwiesenem eigenständigem Gameplay-Nutzen; nicht Combat-v1 |
+| **Hunter / Beastmaster / Tamer** | frühere Fernkampf-/Begleiter-Archetypen und möglicher eigener Pfad | Ranger ist aktueller Endjob-Name; Hunter-/Tamer-Konzept nicht automatisch dessen Loop |
+| **Monk-Unterpfade** | offensive Battle-Monk/Kung-Fu-artige Richtung oder defensiv-spirituelle Identität | Monk bleibt aktueller Endjob; genaue Fähigkeit/Unterpfad offen |
+| **offensiver Holy-/Dark-Caster** | zusätzliche Rolle neben Priest/Cleric/Chanter | `Reaper` ist jüngerer Name im vierten Support-/Healing-Slot; eine 1:1-Gleichsetzung mit dem alten Holy/Dark-Caster ist **nicht** entschieden |
+| **vierter Knight-/Heavy-Pfad** | ältere, noch nicht benannte zusätzliche Knight-Identität | `Gladiator` ist nun ein vorgesehener Name; sein Mechanikprofil bleibt offen |
 
-## 16.4 Target Detail Window — STRONG DIRECTION
+Weitere ältere Beispiele: ein Templar-Gegner mit unerwartetem Reflect, Klassensignaturen wie Assassin-Legendary oder Chanter-Combat-Staff, eine Castle-Guard-Weltflag und eine zeitweilige Trickster-Inversion. Sie sind in den jeweiligen Hauptabschnitten dieser GDD als **Beispiel/Direction** erhalten und werden nicht als konkrete fertig geschriebene Spielwelt ausgegeben.
 
-Mögliche Lösung:
+## 15.4 Erweiterte offene Designentscheidungen — OPEN
 
-- normales Combat-HUD bleibt relativ schlank.
-- Spieler kann ein eigenes Detailfenster für das aktuelle Target öffnen.
-- dieses Fenster kann direkt mit dem Knowledge-System verbunden sein.
-- unbekannte Informationen erscheinen als `???`.
+**Klassen & Progression:** genaue Starter-/Zwischenjob-Namen; exakte Jobpfade; Levelschwellen; frühe Klassen als Mastery-Endpfade; Talent-/Skill-Netz-Topologie; Talentpunkt-Frequenz; Slot-Limit; Respec-Aufwand und Story-Ausnahmen; Use-by-Mastery; exakte Ability-Unlock-Quellen; companion-exklusive Jobs.
 
-Noch keine finale UI-Entscheidung.
+**Combat & Charaktere:** vollständige Faction-/Team-Regeln; spezielle Beschwörungen/Spawns; Extra-Turns und ihr Duration-/Cooldown-Timing; Element-Sonderfälle; magische Blockbarkeit; globale/individuelle Damage-Caps und Status-Immunitäten; Parry; finaler Schadens-/Heal-Report; zulässige NPC-/Boss-Aktionen; Ressourcensysteme über Mana hinaus.
 
----
+**Gear & Loot:** Waffen-/Armor-/Accessory-Slotstruktur; genaue Klasse↔Waffentyp-Matrix; Gear-Bindungen; Legendary-Drops/Quests/Anzahl; Sockets/Manastones; Crafting, Shops, Economy und begrenzte einzigartige Items.
 
-# 17. Technical Architecture Principles
-
-## 17.1 Core Systems sollen voneinander getrennt bleiben — FIXED
-
-Beispiele:
-
-- Combat führt Regeln aus.
-- Enemy/Game Data beschreibt, was existiert.
-- Knowledge-System speichert, was der Spieler kennt.
-- UI entscheidet, was davon angezeigt wird.
-
-Das Knowledge-System soll nicht den Combat-Core verändern müssen, nur um unbekannte Informationen zu verstecken.
-
-## 17.2 Neue Core-Mechanik nur bei echtem Mehrwert — FIXED
-
-Neue fundamentale Systeme sollen nur entstehen, wenn ein gewünschter Gameplay-Loop mit bestehenden Mechaniken nicht sinnvoll ausdrückbar ist.
-
-Beispiel:
-
-- Fencer-Parry könnte gerechtfertigt sein.
-- für jede neue Klasse automatisch ein neues Subsystem zu bauen ist nicht gewünscht.
-
-## 17.3 Zentralisierte Balance-Formeln — FIXED
-
-Werte wie:
-
-- Defense,
-- Resistance,
-- Crit,
-- Dodge,
-- Block,
-- Damage Scaling,
-- XP-Kurve,
-
-sollen möglichst zentral oder datengetrieben definiert werden.
-
-Ziel:
-
-Balancing-Änderungen sollen keine großflächigen Codeänderungen verlangen.
+**Knowledge, World und UX:** Formeln für Bestiary-Unlocks; Boss-vs.-Normalgegner-HUD; konkrete Target-Detailansicht; UI/Controller-Belegung; Regionen/Map und Encounters; Story/Origin/Background; tatsächliche Quest- und Weltflags; Zeitsystem; Save/Load-Struktur; Sound/Art-Style und finale Engine-UI.
 
 ---
 
-# 18. World / Story / Exploration
+# 16. Design-Guardrails für jede neue Idee
 
-## 18.1 Story — OPEN
-
-Es fehlt noch eine grobe Kernidee für:
-
-1. Wer ist der Spieler am Anfang?
-2. Was bringt ihn auf die Reise?
-3. Was ist der zentrale Konflikt der Welt?
-4. Warum eskaliert die Reise plausibel bis zu extremen Endgame-Gegnern und Superbossen?
-
-Die Story soll die bereits festgelegten Systemideen unterstützen, nicht gegen sie arbeiten.
-
-## 18.2 Origin / Start Structure — OPEN
-
-Diskutierte Möglichkeiten:
-
-### A) verschiedene kurze Startorte
-
-- unterschiedliche Dörfer/Quartiere.
-- frühe individuelle Abschnitte.
-- später schnelle Konvergenz auf gemeinsame Hauptstory/Stadt.
-
-### B) gleicher Startort, unterschiedliche Backgrounds
-
-- andere Familie/NPC-Beziehungen/Dialoge.
-- eventuell kleine Stat-Unterschiede.
-
-## 18.3 Background getrennt von Combat Class — STRONG DIRECTION
-
-Background und spätere Base Class könnten getrennt sein.
-
-Mögliche Form:
-
-- zunächst classless/shared intro.
-- später Base-Class-Wahl durch Training/Event.
-
-Background darf auch suboptimale Stats geben.
-
-Beispiel:
-
-- arme Herkunft, aber viel gelesen → +Intelligence.
-- später Rogue → Intelligence ist nicht automatisch optimal.
-
-Keine Belohnung allein dafür, am Startscreen die „richtige“ Antwort zu klicken.
-
-## 18.4 Discovery in der Welt — FIXED PHILOSOPHY
-
-Nicht alle:
-
-- Quests,
-- NPC-Zustände,
-- Items,
-- Skills,
-- Bosse,
-- Unlocks,
-
-müssen sichtbar oder angekündigt sein.
-
-Der Spieler darf 30-mal mit demselben NPC sprechen, weil sich später etwas geändert haben könnte.
+1. Stärkt sie die Identität einer Klasse oder macht sie alle Jobs ähnlicher?
+2. Erzeugt sie eine echte Entscheidung, und welche Option geht dafür verloren?
+3. Kann die gewünschte Interaktion bereits mit Targeting, DamageType, Status, Gear, Turnorder oder bestehenden Ressourcen beschrieben werden?
+4. Falls nicht: Ist ein neues Core-System durch einen klaren neuen Gameplay-Loop gerechtfertigt?
+5. Können Spieler die zugrunde liegende Regel durch Beobachtung lernen, ohne dass die UI jeden Boss löst?
+6. Bleibt jeder **legale Story-Save** abschließbar, auch wenn optionale Bosse Builds ausschließen dürfen?
+7. Welche Aussagen sind feste Entscheidung, welche bloß Beispiel oder noch nicht implementiert?
+8. Muss die Entscheidung jetzt fallen, oder gehört sie ins Backlog nach dem ersten Unity-Kampf?
 
 ---
 
-# 19. Vertical Slice / Scope
+# 17. Zusammenfassung in einem Absatz
 
-## 19.1 Scope Boundary — FIXED DIRECTION
-
-Langfristiges Spiel:
-
-- 2D.
-- turn-based.
-- single-player.
-
-3D und Multiplayer gelten aktuell als unnötige Scope-Explosion.
-
-## 19.2 erster sinnvoller Vertical Slice — STRONG DIRECTION
-
-Möglicher Ablauf:
-
-1. kleine Town.
-2. Outdoor Map.
-3. Bewegung.
-4. Encounter.
-5. Combat Scene.
-6. Party-Funktionalität.
-7. Skills/Status/Turn Order.
-8. Victory/Defeat.
-9. Rückkehr zur Map.
-
-Danach schrittweise:
-
-10. XP/Level.
-11. Loot.
-12. Inventory.
-13. Shop.
-14. Chest.
-15. einfache NPC/Dialog-Struktur.
-
-Story, große Questketten, Cutscenes, Savegames, Art und Audio sind noch nicht ausgearbeitet.
+**Ascend** ist ein geplantes klassisches, rundenbasiertes 2D-Singleplayer-RPG mit starken Klassenidentitäten, bedeutungsvollen Spezialisierungskosten, strategischem Party-/Roster-Building, gefährlicher Welt, verstecktem Wissen, missbarem Content und optionalen Encountern, die echte Build-Antworten verlangen. Die Hauptstory soll mit jedem legalen Entwicklungsweg grundsätzlich abschließbar bleiben; optionaler Endgame-Content darf darüber hinaus spezifische Fähigkeiten und Entscheidungen voraussetzen. Aktuell existiert ein C#-Combat-Test mit vier Job-Kits und modularen Damage-, Targeting-, Cooldown- und Status-Grundlagen. **Der nächste Schritt ist nicht ein weiterer Job oder Boss, sondern Cleanup → Console/Core-Trennung → Verständnis-/Regressionstest → erster funktionierender Unity-Kampf.**
 
 ---
 
-# 20. Combat-v1 Boundary Before Unity
 
-## 20.1 Muss vor Unity abgeschlossen sein — FIXED ROADMAP
+# 18. Vollständigkeits- und Versionsabgleich
 
-- aktuelle Bugs bereinigen.
-- Cooldowns.
-- ausreichend Wiederholungscontent für C#-Festigung.
-- Ability Targeting + TargetCount.
-- Damage Pipeline / Elements / Resistances Foundation.
-- wichtige Combat Edge Cases testen.
-- Console/Input/Presentation ausreichend vom Core trennen.
+## 18.1 Was aus v0.1 wieder ausführlich erfasst ist
 
-## 20.2 Danach: STOP für neue Combat-Fundamentalsysteme — FIXED ROADMAP
+| Alter Themenkomplex (`docs/GAME_DESIGN.md` vom 10.09.2026) | Verbindlicher Ort in dieser Master-GDD |
+|---|---|
+| Spielidentität, Konsequenzen, 100%-Run | §§ 1–2 |
+| Kampfstruktur, Timing, Reapplication, Crit/Dodge/Block, Cooldown | § 3 |
+| Elemente und zentrale Damage-Pipeline | §§ 3.8 und 4 |
+| Party, Main Character, drei Companion-Typen | § 5 |
+| Klassenprogression, Mastery-Constellation, Unlock-Quellen | § 6 |
+| Waffen-Tiers, Requirements, Signature-Gear, kein Smart Loot, seltene Drops | § 7 |
+| Beobachtungsbasiertes Bestiary inkl. Uniques-vs.-Repeatables | § 8 |
+| Boss-Twists, Trickster, DPS-Checks, Phasen-/World-State-Flags | § 9 |
+| Origin, Background, Missables, zeitliche Trigger | § 10 |
+| HUD, Target-Detailansicht und Unity-Ziel | § 11 |
+| Trennung Combat / Knowledge / UI, Balancezentralisierung | § 12 |
+| Combat-v1-Grenze, Vertical Slice und späterer Ausbau | §§ 13–14 |
+| Früher eigenständige Klassenideen und offene Fragen | § 15 |
 
-Nach Erreichen dieser Grenze geht das Projekt in einen Unity-Prototyp.
+## 18.2 Jüngere Entscheidungen, die alte Passagen ablösen
 
-Neue große Combat-Grundsysteme werden vorher nicht mehr begonnen, außer:
+- **Cooldowns sind implementiert** und haben definierte `Cooldown + 1`-Semantik; sie sind nicht mehr „nächster Implementierungsschritt“.
+- **Speed ist eigener Turnorder-Wert** und bestimmt nicht die reguläre Zuganzahl; alte Formulierungen wie „Dexterity/Speed“ sind nicht als Gleichsetzung zu lesen.
+- **Statusdauer mit Turn-Start-Snapshot** ist implementiert; eine bei diesem Zug neu erzeugte Wirkung verliert nicht direkt ihren ersten zukünftigen Turn.
+- **`TargetType.Any` ist die Default-Regel** für normal zugelassene lebende Ziele; `TargetCount = 0` steht für alle gültigen Ziele.
+- **DamageType/Resistance und allgemeiner Incoming-Damage-Hook** sind technisch bereits vorhanden; Poison/Bleed dürfen weiterhin bewusst HP direkt abziehen.
+- **Nominale Heal-Anzeige** ist explizite Designentscheidung, kein Bug bei geringer fehlender HP.
+- **4→8→16** ist das aktuelle Zielmodell; frühere Ninja-/Berserker-/Fencer-/Hunter-Zweigideen sind archivierte Optionen und keine zusätzlich automatisch zugesagten Jobs. `Gladiator`, `Reaper`, `Ranger`, `Samurai` und `Ghostblade` gehören zur jüngeren 16er-Namensplanung, ihre unentschiedenen Details bleiben offen.
+- **Combat-v1 wird nach dem Cleanup nicht weiter in die Breite gebaut.** Danach folgen Console/Core-Split, Verständnis-/Regressionstests und ein bewusst schlichter Unity-Kampf.
 
-- echter Bug.
-- Unity-Integration wird blockiert.
+## 18.3 Quellenautorität und Änderungskontrolle
 
-Neue Ideen gehen ins Backlog.
+Der **GDD-Text** dokumentiert Designabsicht; der zuletzt verifizierte Repository-Code belegt den **implementierten Stand**. Ein früherer GDD-Entwurf oder eine plausible Architekturidee belegt keine ausgeführte Funktion. Für widersprüchliche ältere Entwürfe gilt die **jüngere ausdrücklich getroffene Designentscheidung**; ein Detail ohne entsprechende spätere Entscheidung bleibt `DIRECTION`, `OPEN`, `EXAMPLE` oder `ARCHIVE`.
 
----
-
-# 21. Post-Unity / Later Systems — BACKLOG
-
-Nach einem funktionierenden Unity-Combat-Proof-of-Concept:
-
-- XP-/Level-Loop.
-- Map/Encounter-System.
-- Loot.
-- Inventory.
-- Equipment UI.
-- Shop.
-- Chest.
-- Queststruktur.
-- Bestiary/Knowledge UI.
-- Legendary-System.
-- Hidden World-State Flags.
-- Story Content.
-- vollständige Klassenbäume.
-- Save/Load.
+Diese v0.3 ist zur Ablage als `docs/GAME_DESIGN.md` vorgesehen. Die bisherige ausführliche v0.1 sollte **vor einem eventuellen Replace** z. B. unter `docs/archive/GAME_DESIGN_v0.1_2026-09-10.md` erhalten bleiben. Die verdichtete v0.2 kann optional als historische Zwischenfassung abgelegt werden. **Diese Datei wurde lediglich erzeugt; ein GitHub-Push oder ein Update des Remote-Repositories wird damit nicht behauptet.**
 
 ---
 
-# 22. Current Open Questions
+## Quellen und Versionshinweise
 
-Diese Punkte sind bewusst **nicht** final entschieden:
-
-- genaue Anzahl der Base Classes.
-- endgültige Namen vieler Klassen.
-- genaue Klassenbaum-Topologie.
-- welche Zwischenklasse zu welcher Endklasse führt.
-- genaue Spezialisierungslevel.
-- Respec-Regeln.
-- Talent Tree vs. Ability Constellation.
-- Skill-by-use-Mastery.
-- genaue Elemente.
-- genaue Blockregeln für magischen Schaden.
-- Priest-Weapon/Focus.
-- vierter Knight-/Heavy-Endpfad.
-- Monk-Gimmick.
-- Hunter/Beastmaster/Tamer-Details.
-- Fencer als Special Class vs. anderer Pfad.
-- Parry-Mechanik im Detail.
-- Anzahl Legendary Weapons pro Run.
-- genaue Legendary-Quellen.
-- Socket-/Manastone-System.
-- Bestiary-Unlock-Formeln für normale Gegner.
-- Boss-HUD vs. Mob-HUD.
-- Target Detail Window Layout.
-- Start-/Origin-Modell.
-- Story/Setting.
-- Queststruktur.
-- Economy/Crafting.
-- konkrete Zahlen und Balancing.
-
----
-
-# 23. Design Guardrails
-
-Bei jeder neuen Idee künftig prüfen:
-
-1. **Stärkt sie Klassenidentität oder macht sie alle ähnlicher?**
-2. **Erzeugt sie eine echte Entscheidung oder nur mehr Auswahl ohne Konsequenz?**
-3. **Kann sie mit bestehenden Systemen ausgedrückt werden?**
-4. **Falls sie eine neue Core-Mechanik braucht: erzeugt diese einen wirklich neuen Gameplay-Loop?**
-5. **Passt sie zur Oldschool-Informationsphilosophie?**
-6. **Bleibt Story-Content grundsätzlich lösbar?**
-7. **Darf optionaler Content absichtlich Builds ausschließen?**
-8. **Ist die Regel konsistent genug, dass Spieler sie lernen können?**
-9. **Ist sie Combat-v1-relevant oder gehört sie ins Backlog?**
-10. **Muss diese Entscheidung jetzt wirklich getroffen werden?**
-
----
-
-# 24. Kurzfassung der Spielidentität
-
-RPGLearning soll ein 2D, turn-based Singleplayer-RPG mit starkem Klassen- und Partyfokus werden.
-
-Die zentrale Identität entsteht aus:
-
-- eingeschränkten, gewichtigen Klassenpfaden.
-- echten Spezialisierungskosten.
-- starkem Roster-Building.
-- klaren Weapon-/Equipment-Identitäten.
-- verstecktem Wissen und Discovery.
-- einem progressiven Bestiary/Knowledge-System.
-- Bossen, die beobachtet und gelernt werden müssen.
-- optionalem Endgame, das nicht jedem Build garantiert offensteht.
-- versteckten World-State-Folgen.
-- missbarem Content.
-- seltenen und bedeutungsvollen Endgame-Belohnungen.
-- bewusstem Verzicht auf permanente Handholding.
-
-Das Spiel soll dem Spieler viele Werkzeuge geben, aber nicht garantieren, dass er sie sinnvoll kombiniert.
-
-**Leitsatz:**
-
-> Entscheidungen haben Gewicht. Wissen ist Progression. Nicht alles muss in einem Run möglich bleiben.
-
+- Ursprüngliches, detaillierteres Designarchiv: [`docs/GAME_DESIGN.md`, v0.1 vom 10.09.2026](https://github.com/Kryphix95/RPGLearning/blob/main/docs/GAME_DESIGN.md). Dort stehen ältere Ideen, Illustrationen und Detaildiskussionen; bei Widerspruch gilt die **jüngere hier explizit dokumentierte Entscheidung**, nicht der ältere Entwurfsstatus.
+- Technischer Code-/README-Ausgangspunkt: [Repository `Kryphix95/RPGLearning`](https://github.com/Kryphix95/RPGLearning), [Commit `288fb27e` vom 16.09.2026](https://github.com/Kryphix95/RPGLearning/commit/288fb27e497405b725b7ee2be1f85a1fc0d2cd31). Der lokale Hygiene-Cleanup danach wurde vom Entwickler berichtet, aber nicht durch einen neueren Remote-Commit in diesem Dokument verifiziert.
+- Dieses Dokument ist **v0.3 (Master-GDD)**, Stand **23.09.2026**. Es ist als Ersatz für die bisherige `docs/GAME_DESIGN.md` vorbereitet, ersetzt sie aber nicht automatisch im GitHub-Repository und enthält bewusst keine neuen Story- oder Mechanikentscheidungen für bisher offene Punkte.

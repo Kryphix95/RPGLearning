@@ -7,5 +7,6 @@ public class Stun : StatusEffect
         Name = "Stun";
         Duration = duration;
     }
+
    public override bool PreventsAction => true;
 }

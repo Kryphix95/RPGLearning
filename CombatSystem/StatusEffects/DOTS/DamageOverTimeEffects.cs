@@ -9,6 +9,7 @@ public abstract class DamageOverTimeEffect : StatusEffect
 		Duration = duration;
 		DamagePerTurn = damagePerTurn;
 	}
+
 	public override void OnTurnEnd(Character target)
 	{
 		target.Health -= DamagePerTurn;

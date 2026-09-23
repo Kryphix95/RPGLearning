@@ -10,11 +10,13 @@ namespace GameAscendNamespace
             Duration = duration;
             SpeedDecrease = speedDecrease;
         }
+
         public override void OnApply(Character target)
         {
             target.Speed -= SpeedDecrease;
             Console.WriteLine($"{target.Name} Speed: {target.Speed}");
         }
+
         public override void OnRemove(Character target)
         {
             target.Speed += SpeedDecrease;
