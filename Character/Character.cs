@@ -81,14 +81,14 @@ public class Character
 
     // Methods for Combat, including Normal Attack and Damage Taken, which calculate the damage dealt and taken by the character, taking into account the character's stats and abilities
 
-    public DamageResult NormalAttack(double additionalCritChance = 0) // Normal Attack method, calculates the damage for a normal attack, takes into account the character's strength, weapon damage, and crit chance
+    public DamageResult NormalAttack(double additionalCritChance = 0, double additionalCritDMG = 0) // Normal Attack method, calculates the damage for a normal attack, takes into account the character's strength, weapon damage, and crit chance
     {
         bool isCrit = IsCrit(PhysicalCritChance, additionalCritChance);
         int rawDamage;
 
         if(isCrit)
         {
-            rawDamage = (int)Math.Round(PhysicalDamage * CritMultiplier); // If the character got a Crit, then the damage is multiplied by the CritMultiplier
+            rawDamage = (int)Math.Round(PhysicalDamage * (CritMultiplier + additionalCritDMG)); // If the character got a Crit, then the damage is multiplied by the CritMultiplier
 
         }
         else

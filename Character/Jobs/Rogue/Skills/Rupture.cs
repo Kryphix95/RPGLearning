@@ -38,9 +38,7 @@ public class Rupture : Ability
 
             if (activeBleed != null && !result.IsDodged && !result.TargetDied)
             {
-                Target.ApplyStatusEffect(
-                    new Bleed(2, activeBleed.DamagePerTurn)
-                );
+                Target.ApplyStatusEffect(new Bleed(2, activeBleed.DamagePerTurn));
             }
         }
     }
